@@ -114,6 +114,8 @@ async def setup_agent(settings):
 
     print("Setup Agent: ", settings)
 
+    knowledge_base_id = settings["KnowledgeBase"]
+
     bedrock_runtime = boto3.client('bedrock-runtime', region_name=aws_region)
     bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=aws_region)
 
@@ -160,6 +162,8 @@ async def setup_agent(settings):
 
     # Store the chain in the user session
     cl.user_session.set("chain", chain)
+    cl.user_session.set("knowledge_base_id", knowledge_base_id)
+    
 
 def bedrock_list_models(bedrock):
     response = bedrock.list_foundation_models(byOutputModality="TEXT")
@@ -188,34 +192,38 @@ async def main():
 @cl.on_message
 async def main(message: cl.Message):
 
-    # Retrieve the chain from the user session
-    chain = cl.user_session.get("chain")
+    bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
 
-    res = await chain.ainvoke(
-        message.content, 
-        callbacks=[cl.AsyncLangchainCallbackHandler()]
+    knowledge_base_id = cl.user_session.get("knowledge_base_id") 
+
+    # Select the model to use - Currently Anthropic is Supported
+    model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
+    #model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-instant-v1'
+
+    query = message.content
+    query = query[0:900]
+
+    # Construct the Prompt
+    prompt = f"""\n\nHuman: {query}
+    Assistant:
+    """
+
+    response = bedrock_agent_runtime.retrieve_and_generate(
+        input={
+            'text': prompt,
+        },
+        retrieveAndGenerateConfiguration={
+            'type': 'KNOWLEDGE_BASE',
+            'knowledgeBaseConfiguration': {
+                'knowledgeBaseId': knowledge_base_id,
+                'modelArn': model_arn,
+            }
+        }
     )
-    answer = res["answer"]
-    source_documents = res["source_documents"]  # type: List[Document]
 
-    text_elements = []  # type: List[cl.Text]
+    text = response['output']['text']
 
-    if source_documents:
-        for source_idx, source_doc in enumerate(source_documents):
-            source_name = f"source_{source_idx}"
-            #print(source_doc.metadata['location']) # {'type': 'S3', 's3Location': {'uri': 's3://xxx'}}
-            source_content = f"{source_doc.metadata['score']} | {source_doc.page_content}"
-            text_elements.append(
-                cl.Text(content=source_content, name=source_name)
-            )
-        source_names = [text_el.name for text_el in text_elements]
-
-        if source_names:
-            answer += f"\nSources: {', '.join(source_names)}"
-        else:
-            answer += "\nNo sources found"
-
-    await cl.Message(content=answer, elements=text_elements).send()
+    await cl.Message(content=text).send()
 
 
 
@@ -231,3 +239,4 @@ class MyAmazonKnowledgeBasesRetriever(AmazonKnowledgeBasesRetriever):
         print("---------------------------------")
         nquery = query[0:998]
         return AmazonKnowledgeBasesRetriever._get_relevant_documents(self, query=nquery, run_manager=run_manager)
+    
