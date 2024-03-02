@@ -59,7 +59,13 @@ async def setup_settings():
                 values=kb_id_list,
                 initial_index=0#model_ids.index("anthropic.claude-v2"),
             ),
-            Switch(id="Generate", label="Retrieve & Generate", initial=True),
+            #Switch(id="Generate", label="Retrieve & Generate", initial=True),
+            Select(
+                id = "Mode",
+                label = "Generate Mode",
+                values = ["RetrieveAndGenerate", "Retrieve"],
+                initial_index = 1,
+            ),
             Select(
                 id = "Model",
                 label = "Foundation Model",
@@ -121,9 +127,11 @@ async def setup_agent(settings):
     knowledge_base_id = settings["KnowledgeBase"]
     
     llm_model_arn = "arn:aws:bedrock:{}::foundation-model/{}".format(AWS_REGION, settings["Model"])
+    mode = settings["Mode"]
 
     cl.user_session.set("llm_model_arn", llm_model_arn)
     cl.user_session.set("knowledge_base_id", knowledge_base_id)
+    cl.user_session.set("mode", mode)
     
 
 def bedrock_list_models(bedrock):
@@ -146,6 +154,19 @@ async def main():
 
 @cl.on_message
 async def main(message: cl.Message):
+
+    session_id = cl.user_session.get("session_id") 
+    knowledge_base_id = cl.user_session.get("knowledge_base_id") 
+    llm_model_arn = cl.user_session.get("llm_model_arn") 
+    mode = cl.user_session.get("mode") 
+    #["RetrieveAndGenerate", "Retrieve"],
+    if mode == "RetrieveAndGenerate":
+        await main_retrieve_and_generate(message)
+    else:
+        await main_retrieve(message)
+
+
+async def main_retrieve_and_generate(message: cl.Message):
 
     session_id = cl.user_session.get("session_id") 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
@@ -217,3 +238,101 @@ async def main(message: cl.Message):
         await msg.stream_token(f"{e}")
     finally:
         await msg.send()
+
+
+async def main_retrieve(message: cl.Message):
+
+    session_id = cl.user_session.get("session_id") 
+    knowledge_base_id = cl.user_session.get("knowledge_base_id") 
+    llm_model_arn = cl.user_session.get("llm_model_arn") 
+
+    query = message.content
+    query = query[0:900]
+
+    prompt = f"""\n\nHuman: {query}
+    Assistant:
+    """
+    msg = cl.Message(content="")
+
+    await msg.send()
+
+    try:
+
+        async with cl.Step(name="KnowledgeBase", type="llm", root=False) as step:
+            step.input = msg.content
+
+            try:
+
+                response = bedrock_agent_runtime.retrieve(
+                    knowledgeBaseId = knowledge_base_id,
+                    retrievalQuery={
+                        'text': prompt,
+                    },
+                    retrievalConfiguration={
+                        'vectorSearchConfiguration': {
+                            'numberOfResults': 3
+                        }
+                    }
+                )
+
+
+                for i, retrievalResult in enumerate(response['retrievalResults']):
+                    uri = retrievalResult['location']['s3Location']['uri']
+                    excerpt = retrievalResult['content']['text'][0:75]
+                    score = retrievalResult['score']
+                    print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
+                    #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
+                    await step.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
+                    
+
+            except Exception as e:
+                logging.error(traceback.format_exc())
+                await step.stream_token(f"{e}")
+            finally:
+                await step.send()
+
+        async with cl.Step(name="Agent", type="llm", root=False) as step_llm:
+            step_llm.input = msg.content
+            step_llm.output = f"Test"
+
+        await msg.stream_token(f"Complete\n")
+        await msg.send()
+
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        await msg.stream_token(f"{e}")
+    finally:
+        await msg.send()
+    
+def demo_bedrock_knowledge_base_search(session, bedrock_runtime, bedrock_agent_runtime,
+                                embedding_model_id="amazon.titan-embed-text-v1",
+                                user_prompt="What is the first ammendment?"):
+    
+    print(f"Call demo_bedrock_knowledge_base_search | user_prompt={user_prompt}")
+
+    # Knowledge Base
+    knowledge_base_id = "" #config.bedrock_kb["id"]
+
+    response = bedrock_agent_runtime.retrieve(
+        knowledgeBaseId = knowledge_base_id,
+        retrievalQuery={
+            'text': user_prompt,
+        },
+        retrievalConfiguration={
+            'vectorSearchConfiguration': {
+                'numberOfResults': 3
+            }
+        }
+    )
+
+    print("Received response:" + json.dumps(response, ensure_ascii=False, indent=1))
+
+    print(f"--------------------------------------")
+
+    for i, retrievalResult in enumerate(response['retrievalResults']):
+        uri = retrievalResult['location']['s3Location']['uri']
+        excerpt = retrievalResult['content']['text'][0:75]
+        score = retrievalResult['score']
+        print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
+        
+    print(f"--------------------------------------")
