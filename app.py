@@ -157,12 +157,8 @@ async def main():
 @cl.on_message
 async def main(message: cl.Message):
 
-    #bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
-
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
     llm_model_arn = cl.user_session.get("llm_model_arn") 
-
-    model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
 
     query = message.content
     query = query[0:900]
@@ -177,22 +173,50 @@ async def main(message: cl.Message):
 
     try:
 
-        response = bedrock_agent_runtime.retrieve_and_generate(
-            input={
+        response = bedrock_agent_runtime.retrieve_and_generate( #sessionId 
+            input = {
                 'text': prompt,
             },
-            retrieveAndGenerateConfiguration={
+            retrieveAndGenerateConfiguration = {
                 'type': 'KNOWLEDGE_BASE',
                 'knowledgeBaseConfiguration': {
                     'knowledgeBaseId': knowledge_base_id,
                     'modelArn': llm_model_arn,
+                    'retrievalConfiguration': {
+                        'vectorSearchConfiguration': {
+                            #'numberOfResults': 3, # The numberOfResults field is currently unsupported for RetrieveAndGenerate.
+                            #'overrideSearchType': 'HYBRID'|'SEMANTIC'
+                        }
+                    }
                 }
             }
         )
 
         text = response['output']['text']
         await msg.stream_token(text)
-        #await cl.Message(content=text).send()
+
+        if "citations" in response:
+            #print(response["citations"])
+            for citation in response["citations"]:
+                if "retrievedReferences" in citation:
+                    references = citation["retrievedReferences"]
+                    #print(references)
+                    for reference in references:
+                        print(reference)
+                        reference_text = ""
+                        reference_location_type = ""
+                        reference_location_uri = ""
+                        if "content" in reference:
+                            content = reference["content"]
+                            reference_text = content["text"]
+                        if "location" in reference:
+                            location = reference["location"]
+                            location_type = location["type"]
+                            reference_location_type = location_type
+                            if "S3" == location_type:
+                                location_uri = location["s3Location"]["uri"]
+                                reference_location_uri = location_uri
+                        await msg.stream_token(f"\n{reference_location_type} {reference_location_uri}")
 
     except Exception as e:
         logging.error(traceback.format_exc())
