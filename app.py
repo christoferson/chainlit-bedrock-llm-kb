@@ -56,17 +56,25 @@ async def setup_settings():
         [
             Select(
                 id="KnowledgeBase",
-                label="Amazon Bedrock - KnowledgeBase",
+                label="KnowledgeBase ID",
                 values=kb_id_list,
-                initial_index=0#model_ids.index("anthropic.claude-v2"),
+                initial_index=0
             ),
-            #Switch(id="Generate", label="Retrieve & Generate", initial=True),
+            Slider(
+                id = "RetrieveDocumentCount",
+                label = "KnowledgeBase DocumentCount",
+                initial = 2,
+                min = 1,
+                max = 5,
+                step = 1,
+            ),
             Select(
                 id = "Mode",
-                label = "Generate Mode",
+                label = "KnowledgeBase Generation Mode",
                 values = ["RetrieveAndGenerate", "Retrieve"],
                 initial_index = 1,
             ),
+            Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=True),
             Select(
                 id = "Model",
                 label = "Foundation Model",
@@ -105,14 +113,6 @@ async def setup_settings():
                 max = 4096,
                 step = 256,
             ),
-            Slider(
-                id = "DocumentCount",
-                label = "Document Count",
-                initial = 1,
-                min = 1,
-                max = 5,
-                step = 1,
-            )
         ]
     ).send()
 
@@ -129,6 +129,8 @@ async def setup_agent(settings):
     
     llm_model_arn = "arn:aws:bedrock:{}::foundation-model/{}".format(AWS_REGION, settings["Model"])
     mode = settings["Mode"]
+    strict = settings["Strict"]
+    kb_retrieve_document_count = int(settings["RetrieveDocumentCount"])
 
     bedrock_model_id = settings["Model"]
 
@@ -144,7 +146,9 @@ async def setup_agent(settings):
     cl.user_session.set("bedrock_model_id", bedrock_model_id)
     cl.user_session.set("llm_model_arn", llm_model_arn)
     cl.user_session.set("knowledge_base_id", knowledge_base_id)
+    cl.user_session.set("kb_retrieve_document_count", kb_retrieve_document_count)
     cl.user_session.set("mode", mode)
+    cl.user_session.set("strict", strict)
     
 
 def bedrock_list_models(bedrock):
@@ -260,6 +264,8 @@ async def main_retrieve(message: cl.Message):
     llm_model_arn = cl.user_session.get("llm_model_arn") 
     bedrock_model_id = cl.user_session.get("bedrock_model_id")
     inference_parameters = cl.user_session.get("inference_parameters")
+    strict = cl.user_session.get("strict")
+    kb_retrieve_document_count = cl.user_session.get("kb_retrieve_document_count")
 
     query = message.content
 
@@ -274,6 +280,8 @@ async def main_retrieve(message: cl.Message):
         async with cl.Step(name="KnowledgeBase", type="llm", root=False) as step:
             step.input = msg.content
 
+            await step.stream_token(f"\nSearch Max {kb_retrieve_document_count} documents.\n")
+
             try:
 
                 prompt = f"""\n\nHuman: {query[0:900]}
@@ -287,7 +295,7 @@ async def main_retrieve(message: cl.Message):
                     },
                     retrievalConfiguration={
                         'vectorSearchConfiguration': {
-                            'numberOfResults': 3
+                            'numberOfResults': kb_retrieve_document_count
                         }
                     }
                 )
@@ -301,7 +309,7 @@ async def main_retrieve(message: cl.Message):
                     print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
                     #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
                     context_info += f"${text}\n"
-                    await step.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
+                    await step.stream_token(f"\n[{i+1}] score={score} uri={uri} text={excerpt}\n")
                     
 
             except Exception as e:
@@ -318,14 +326,15 @@ async def main_retrieve(message: cl.Message):
 
                 bedrock_model_strategy = AnthropicBedrockModelStrategy()
 
-                prompt = f"""\n\nHuman: Use the following pieces of context to answer the user's question.
-                If you don't know the answer, just say that you don't know, don't try to make up an answer.
-                <context>
-                {context_info}
-                </context>
-                
-                {query}
-                
+                extra_instructions = ""
+                if strict == True:
+                    extra_instructions = "If you don't know the answer, just say that you don't know, don't try to make up an answer."
+
+                prompt = f"""Use the following pieces of context to answer the user's question. 
+                {extra_instructions}
+                <context>{context_info}</context>
+                \n\nHuman: {query}
+
                 Assistant:
                 """
 
@@ -345,7 +354,7 @@ async def main_retrieve(message: cl.Message):
             finally:
                 await step_llm.send()
 
-        await msg.stream_token(f"Complete\n")
+        await msg.stream_token(f". strict={strict}\n")
         await msg.send()
 
     except Exception as e:
