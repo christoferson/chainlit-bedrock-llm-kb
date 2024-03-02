@@ -1,11 +1,8 @@
 import os
 import boto3
-from langchain_community.chat_models import BedrockChat
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ChatMessageHistory, ConversationBufferMemory
-from langchain_community.retrievers import AmazonKnowledgeBasesRetriever
+import uuid
 import chainlit as cl
-from chainlit.input_widget import Select, Slider
+from chainlit.input_widget import Select, Slider, Switch
 from typing import Optional
 import logging
 import traceback
@@ -62,6 +59,7 @@ async def setup_settings():
                 values=kb_id_list,
                 initial_index=0#model_ids.index("anthropic.claude-v2"),
             ),
+            Switch(id="Generate", label="Retrieve & Generate", initial=True),
             Select(
                 id = "Model",
                 label = "Foundation Model",
@@ -121,18 +119,6 @@ async def setup_agent(settings):
     print("Setup Agent: ", settings)
 
     knowledge_base_id = settings["KnowledgeBase"]
-
-    llm = BedrockChat(
-        client = bedrock_runtime,
-        model_id = settings["Model"], 
-        model_kwargs = {
-            "temperature": settings["Temperature"],
-            "top_p": settings["TopP"],
-            "top_k": int(settings["TopK"]),
-            "max_tokens_to_sample": int(settings["MaxTokenCount"]),
-        },
-        streaming = True
-    )
     
     llm_model_arn = "arn:aws:bedrock:{}::foundation-model/{}".format(AWS_REGION, settings["Model"])
 
@@ -148,6 +134,10 @@ def bedrock_list_models(bedrock):
 
 @cl.on_chat_start
 async def main():
+
+    session_id = str(uuid.uuid4())
+
+    cl.user_session.set("session_id", session_id)
     
     settings = await setup_settings()
 
@@ -157,6 +147,7 @@ async def main():
 @cl.on_message
 async def main(message: cl.Message):
 
+    session_id = cl.user_session.get("session_id") 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
     llm_model_arn = cl.user_session.get("llm_model_arn") 
 
@@ -166,14 +157,14 @@ async def main(message: cl.Message):
     prompt = f"""\n\nHuman: {query}
     Assistant:
     """
-
     msg = cl.Message(content="")
 
     await msg.send()
 
     try:
 
-        response = bedrock_agent_runtime.retrieve_and_generate( #sessionId 
+        response = bedrock_agent_runtime.retrieve_and_generate(
+            #sessionId = session_id,
             input = {
                 'text': prompt,
             },
@@ -201,7 +192,9 @@ async def main(message: cl.Message):
                 if "retrievedReferences" in citation:
                     references = citation["retrievedReferences"]
                     #print(references)
+                    reference_idx = 1
                     for reference in references:
+                        reference_idx = reference_idx + 1
                         print(reference)
                         reference_text = ""
                         reference_location_type = ""
@@ -217,6 +210,7 @@ async def main(message: cl.Message):
                                 location_uri = location["s3Location"]["uri"]
                                 reference_location_uri = location_uri
                         await msg.stream_token(f"\n{reference_location_type} {reference_location_uri}")
+                        #elements.append(cl.Text(name=f"src_{reference_idx}", content=f"{location_uri}\n{reference_text}"))
 
     except Exception as e:
         logging.error(traceback.format_exc())
