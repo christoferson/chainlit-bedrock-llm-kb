@@ -6,6 +6,7 @@ from chainlit.input_widget import Select, Slider, Switch
 from typing import Optional
 import logging
 import traceback
+import json
 
 aws_region = os.environ["AWS_REGION"]
 AWS_REGION = os.environ["AWS_REGION"]
@@ -129,6 +130,18 @@ async def setup_agent(settings):
     llm_model_arn = "arn:aws:bedrock:{}::foundation-model/{}".format(AWS_REGION, settings["Model"])
     mode = settings["Mode"]
 
+    bedrock_model_id = settings["Model"]
+
+    inference_parameters = dict (
+        temperature = settings["Temperature"],
+        top_p = float(settings["TopP"]),
+        top_k = int(settings["TopK"]),
+        max_tokens_to_sample = int(settings["MaxTokenCount"]),
+        stop_sequences =  []
+    )
+
+    cl.user_session.set("inference_parameters", inference_parameters)
+    cl.user_session.set("bedrock_model_id", bedrock_model_id)
     cl.user_session.set("llm_model_arn", llm_model_arn)
     cl.user_session.set("knowledge_base_id", knowledge_base_id)
     cl.user_session.set("mode", mode)
@@ -245,23 +258,27 @@ async def main_retrieve(message: cl.Message):
     session_id = cl.user_session.get("session_id") 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
     llm_model_arn = cl.user_session.get("llm_model_arn") 
+    bedrock_model_id = cl.user_session.get("bedrock_model_id")
+    inference_parameters = cl.user_session.get("inference_parameters")
 
     query = message.content
-    query = query[0:900]
 
-    prompt = f"""\n\nHuman: {query}
-    Assistant:
-    """
     msg = cl.Message(content="")
 
     await msg.send()
 
     try:
 
+        context_info = ""
+
         async with cl.Step(name="KnowledgeBase", type="llm", root=False) as step:
             step.input = msg.content
 
             try:
+
+                prompt = f"""\n\nHuman: {query[0:900]}
+                Assistant:
+                """
 
                 response = bedrock_agent_runtime.retrieve(
                     knowledgeBaseId = knowledge_base_id,
@@ -278,10 +295,12 @@ async def main_retrieve(message: cl.Message):
 
                 for i, retrievalResult in enumerate(response['retrievalResults']):
                     uri = retrievalResult['location']['s3Location']['uri']
-                    excerpt = retrievalResult['content']['text'][0:75]
+                    text = retrievalResult['content']['text']
+                    excerpt = text[0:75]
                     score = retrievalResult['score']
                     print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
                     #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
+                    context_info += f"${text}\n"
                     await step.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
                     
 
@@ -293,7 +312,38 @@ async def main_retrieve(message: cl.Message):
 
         async with cl.Step(name="Agent", type="llm", root=False) as step_llm:
             step_llm.input = msg.content
-            step_llm.output = f"Test"
+            #step_llm.output = f"Test"
+
+            try:
+
+                bedrock_model_strategy = AnthropicBedrockModelStrategy()
+
+                prompt = f"""\n\nHuman: Use the following pieces of context to answer the user's question.
+                If you don't know the answer, just say that you don't know, don't try to make up an answer.
+                <context>
+                {context_info}
+                </context>
+                
+                {query}
+                
+                Assistant:
+                """
+
+                request = bedrock_model_strategy.create_request(inference_parameters, prompt)
+ 
+                print(f"{type(request)} {request}")
+
+                response = bedrock_model_strategy.send_request(request, bedrock_runtime, bedrock_model_id)
+
+                stream = response["body"]
+
+                await bedrock_model_strategy.process_response_stream(stream, msg)
+
+            except Exception as e:
+                logging.error(traceback.format_exc())
+                await step_llm.stream_token(f"{e}")
+            finally:
+                await step_llm.send()
 
         await msg.stream_token(f"Complete\n")
         await msg.send()
@@ -303,36 +353,54 @@ async def main_retrieve(message: cl.Message):
         await msg.stream_token(f"{e}")
     finally:
         await msg.send()
-    
-def demo_bedrock_knowledge_base_search(session, bedrock_runtime, bedrock_agent_runtime,
-                                embedding_model_id="amazon.titan-embed-text-v1",
-                                user_prompt="What is the first ammendment?"):
-    
-    print(f"Call demo_bedrock_knowledge_base_search | user_prompt={user_prompt}")
 
-    # Knowledge Base
-    knowledge_base_id = "" #config.bedrock_kb["id"]
+class BedrockModelStrategy():
 
-    response = bedrock_agent_runtime.retrieve(
-        knowledgeBaseId = knowledge_base_id,
-        retrievalQuery={
-            'text': user_prompt,
-        },
-        retrievalConfiguration={
-            'vectorSearchConfiguration': {
-                'numberOfResults': 3
-            }
+    def create_request(self, inference_parameters: dict, prompt : str) -> dict:
+        pass
+
+    def send_request(self, request:dict, bedrock_runtime, bedrock_model_id:str):
+        response = bedrock_runtime.invoke_model_with_response_stream(modelId = bedrock_model_id, body = json.dumps(request))
+        return response
+
+    async def process_response_stream(self, stream, msg : cl.Message):
+        print("unknown")
+        await msg.stream_token("unknown")
+
+class AnthropicBedrockModelStrategy(BedrockModelStrategy):
+
+    def create_request(self, inference_parameters: dict, prompt : str) -> dict:
+        request = {
+            "prompt": prompt,
+            "temperature": inference_parameters.get("temperature"),
+            "top_p": inference_parameters.get("top_p"), #0.5,
+            "top_k": inference_parameters.get("top_k"), #300,
+            "max_tokens_to_sample": inference_parameters.get("max_tokens_to_sample"), #2048,
+            #"stop_sequences": []
         }
-    )
+        return request
 
-    print("Received response:" + json.dumps(response, ensure_ascii=False, indent=1))
-
-    print(f"--------------------------------------")
-
-    for i, retrievalResult in enumerate(response['retrievalResults']):
-        uri = retrievalResult['location']['s3Location']['uri']
-        excerpt = retrievalResult['content']['text'][0:75]
-        score = retrievalResult['score']
-        print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
-        
-    print(f"--------------------------------------")
+    async def process_response_stream(self, stream, msg : cl.Message):
+        if stream:
+            for event in stream:
+                chunk = event.get("chunk")
+                if chunk:
+                    object = json.loads(chunk.get("bytes").decode())
+                    #print(object)
+                    if "completion" in object:
+                        completion = object["completion"]
+                        #print(completion)
+                        await msg.stream_token(completion)
+                    stop_reason = None
+                    if "stop_reason" in object:
+                        stop_reason = object["stop_reason"]
+                    
+                    if stop_reason == 'stop_sequence':
+                        invocation_metrics = object["amazon-bedrock-invocationMetrics"]
+                        if invocation_metrics:
+                            input_token_count = invocation_metrics["inputTokenCount"]
+                            output_token_count = invocation_metrics["outputTokenCount"]
+                            latency = invocation_metrics["invocationLatency"]
+                            lag = invocation_metrics["firstByteLatency"]
+                            stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
+                            await msg.stream_token(f"\n\n{stats}")
