@@ -16,6 +16,10 @@ AUTH_ADMIN_PWD = os.environ["AUTH_ADMIN_PWD"]
 
 knowledge_base_id = os.environ["BEDROCK_KB_ID"]
 
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=aws_region)
+bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=aws_region)
+
+
 @cl.password_auth_callback
 def auth_callback(username: str, password: str) -> Optional[cl.User]:
   # Fetch the user matching username from your database
@@ -116,9 +120,6 @@ async def setup_agent(settings):
 
     knowledge_base_id = settings["KnowledgeBase"]
 
-    bedrock_runtime = boto3.client('bedrock-runtime', region_name=aws_region)
-    bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=aws_region)
-
     llm = BedrockChat(
         client = bedrock_runtime,
         model_id = settings["Model"], 
@@ -130,38 +131,7 @@ async def setup_agent(settings):
         },
         streaming = True
     )
-
-    message_history = ChatMessageHistory()
     
-    retriever = MyAmazonKnowledgeBasesRetriever(
-        client = bedrock_agent_runtime,
-        knowledge_base_id = knowledge_base_id,
-        retrieval_config = {
-            "vectorSearchConfiguration": {
-                "numberOfResults": settings["DocumentCount"]
-            }
-        }
-    )
-
-    memory = ConversationBufferMemory(
-        memory_key = "chat_history",
-        output_key = "answer",
-        chat_memory = message_history,
-        return_messages = True,
-    )
-    
-    chain = ConversationalRetrievalChain.from_llm(
-        llm,
-        chain_type = "stuff",
-        retriever = retriever,
-        memory = memory,
-        return_source_documents = True,
-        verbose = True,
-       # max_tokens_limit=1000,
-    )
-
-    # Store the chain in the user session
-    cl.user_session.set("chain", chain)
     cl.user_session.set("knowledge_base_id", knowledge_base_id)
     
 
@@ -173,17 +143,7 @@ def bedrock_list_models(bedrock):
 
 @cl.on_chat_start
 async def main():
-
-    ##
-    #print(f"Profile: {aws_profile} Region: {aws_region}")
-    bedrock = boto3.client("bedrock", region_name=aws_region)
-    bedrock_runtime = boto3.client('bedrock-runtime', region_name=aws_region)
-    bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=aws_region)
-
-    #bedrock_list_models(bedrock)
-
-    ##
-        
+    
     settings = await setup_settings()
 
     await setup_agent(settings)
@@ -192,18 +152,15 @@ async def main():
 @cl.on_message
 async def main(message: cl.Message):
 
-    bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
+    #bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
 
-    # Select the model to use - Currently Anthropic is Supported
     model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
-    #model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-instant-v1'
 
     query = message.content
     query = query[0:900]
 
-    # Construct the Prompt
     prompt = f"""\n\nHuman: {query}
     Assistant:
     """
@@ -224,19 +181,3 @@ async def main(message: cl.Message):
     text = response['output']['text']
 
     await cl.Message(content=text).send()
-
-
-
-###
-    
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from typing import List
-    
-class MyAmazonKnowledgeBasesRetriever(AmazonKnowledgeBasesRetriever):
-
-    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> List[Document]:
-        print("---------------------------------")
-        nquery = query[0:998]
-        return AmazonKnowledgeBasesRetriever._get_relevant_documents(self, query=nquery, run_manager=run_manager)
-    
