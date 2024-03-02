@@ -7,6 +7,8 @@ from langchain_community.retrievers import AmazonKnowledgeBasesRetriever
 import chainlit as cl
 from chainlit.input_widget import Select, Slider
 from typing import Optional
+import logging
+import traceback
 
 aws_region = os.environ["AWS_REGION"]
 AWS_REGION = os.environ["AWS_REGION"]
@@ -132,6 +134,9 @@ async def setup_agent(settings):
         streaming = True
     )
     
+    llm_model_arn = "arn:aws:bedrock:{}::foundation-model/{}".format(AWS_REGION, settings["Model"])
+
+    cl.user_session.set("llm_model_arn", llm_model_arn)
     cl.user_session.set("knowledge_base_id", knowledge_base_id)
     
 
@@ -155,6 +160,7 @@ async def main(message: cl.Message):
     #bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
+    llm_model_arn = cl.user_session.get("llm_model_arn") 
 
     model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-v2'
 
@@ -165,19 +171,31 @@ async def main(message: cl.Message):
     Assistant:
     """
 
-    response = bedrock_agent_runtime.retrieve_and_generate(
-        input={
-            'text': prompt,
-        },
-        retrieveAndGenerateConfiguration={
-            'type': 'KNOWLEDGE_BASE',
-            'knowledgeBaseConfiguration': {
-                'knowledgeBaseId': knowledge_base_id,
-                'modelArn': model_arn,
+    msg = cl.Message(content="")
+
+    await msg.send()
+
+    try:
+
+        response = bedrock_agent_runtime.retrieve_and_generate(
+            input={
+                'text': prompt,
+            },
+            retrieveAndGenerateConfiguration={
+                'type': 'KNOWLEDGE_BASE',
+                'knowledgeBaseConfiguration': {
+                    'knowledgeBaseId': knowledge_base_id,
+                    'modelArn': llm_model_arn,
+                }
             }
-        }
-    )
+        )
 
-    text = response['output']['text']
+        text = response['output']['text']
+        await msg.stream_token(text)
+        #await cl.Message(content=text).send()
 
-    await cl.Message(content=text).send()
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        await msg.stream_token(f"{e}")
+    finally:
+        await msg.send()
