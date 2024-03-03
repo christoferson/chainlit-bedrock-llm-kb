@@ -309,7 +309,7 @@ async def main_retrieve(message: cl.Message):
                     print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
                     #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
                     context_info += f"${text}\n"
-                    await step.stream_token(f"\n[{i+1}] score={score} uri={uri} text={excerpt}\n")
+                    await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)} text={excerpt}\n")
                     
 
             except Exception as e:
@@ -318,7 +318,7 @@ async def main_retrieve(message: cl.Message):
             finally:
                 await step.send()
 
-        async with cl.Step(name="Agent", type="llm", root=False) as step_llm:
+        async with cl.Step(name="Model", type="llm", root=False) as step_llm:
             step_llm.input = msg.content
             #step_llm.output = f"Test"
 
@@ -328,15 +328,19 @@ async def main_retrieve(message: cl.Message):
 
                 extra_instructions = ""
                 if strict == True:
-                    extra_instructions = "If you don't know the answer, just say that you don't know, don't try to make up an answer."
+                    extra_instructions = "If you don't know the answer or not in the provided context, just say that you don't know, don't try to make up an answer. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context. Keep the answer simple."
 
                 prompt = f"""Use the following pieces of context to answer the user's question. 
                 {extra_instructions}
-                <context>{context_info}</context>
+                Here is the context: <context>{context_info}</context>
                 \n\nHuman: {query}
 
                 Assistant:
                 """
+
+                max_tokens = inference_parameters.get("max_tokens_to_sample")
+                temperature = inference_parameters.get('temperature')
+                await step_llm.stream_token(f"model.id={bedrock_model_id} prompt.len={len(prompt)} temperature={temperature} max_tokens={max_tokens}")
 
                 request = bedrock_model_strategy.create_request(inference_parameters, prompt)
  
