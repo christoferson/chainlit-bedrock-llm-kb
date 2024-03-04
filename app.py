@@ -14,7 +14,7 @@ AWS_REGION = os.environ["AWS_REGION"]
 AUTH_ADMIN_USR = os.environ["AUTH_ADMIN_USR"]
 AUTH_ADMIN_PWD = os.environ["AUTH_ADMIN_PWD"]
 
-knowledge_base_id = os.environ["BEDROCK_KB_ID"]
+#knowledge_base_id = os.environ["BEDROCK_KB_ID"]
 
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=aws_region)
 bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=aws_region)
@@ -83,7 +83,7 @@ async def setup_settings():
             ),
             Slider(
                 id = "Temperature",
-                label = "Temperature",
+                label = "Temperature Analytical vs Creative",
                 initial = 0.0,
                 min = 0,
                 max = 1,
