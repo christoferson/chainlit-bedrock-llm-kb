@@ -300,7 +300,7 @@ async def main_retrieve(message: cl.Message):
                     }
                 )
 
-
+                reference_elements = []
                 for i, retrievalResult in enumerate(response['retrievalResults']):
                     uri = retrievalResult['location']['s3Location']['uri']
                     text = retrievalResult['content']['text']
@@ -308,9 +308,13 @@ async def main_retrieve(message: cl.Message):
                     score = retrievalResult['score']
                     print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
                     #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
-                    context_info += f"${text}\n"
-                    await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)} text={excerpt}\n")
-                    
+                    context_info += f"<p>${text}</p>\n" #context_info += f"${text}\n"
+                    #await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)} text={excerpt}\n")
+                    await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)}\n")
+                    reference_elements.append(cl.Text(name=f"[{i+1}] {uri}", content=text, display="inline"))
+                
+                await step.stream_token(f"\n")
+                step.elements = reference_elements
 
             except Exception as e:
                 logging.error(traceback.format_exc())
@@ -321,6 +325,8 @@ async def main_retrieve(message: cl.Message):
         async with cl.Step(name="Model", type="llm", root=False) as step_llm:
             step_llm.input = msg.content
             #step_llm.output = f"Test"
+
+            elements = []
 
             try:
 
@@ -338,6 +344,8 @@ async def main_retrieve(message: cl.Message):
                 Assistant:
                 """
 
+                elements.append(cl.Text(name=f"prompt", content=prompt, display="inline"))
+
                 max_tokens = inference_parameters.get("max_tokens_to_sample")
                 temperature = inference_parameters.get('temperature')
                 await step_llm.stream_token(f"model.id={bedrock_model_id} prompt.len={len(prompt)} temperature={temperature} max_tokens={max_tokens}")
@@ -351,6 +359,8 @@ async def main_retrieve(message: cl.Message):
                 stream = response["body"]
 
                 await bedrock_model_strategy.process_response_stream(stream, msg)
+
+                step_llm.elements = elements
 
             except Exception as e:
                 logging.error(traceback.format_exc())
