@@ -16,8 +16,10 @@ AUTH_ADMIN_PWD = os.environ["AUTH_ADMIN_PWD"]
 
 #knowledge_base_id = os.environ["BEDROCK_KB_ID"]
 
-bedrock_runtime = boto3.client('bedrock-runtime', region_name=aws_region)
-bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=aws_region)
+bedrock = boto3.client("bedrock", region_name=AWS_REGION)
+bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
+bedrock_agent = boto3.client('bedrock-agent', region_name=AWS_REGION)
+bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
 
 
 @cl.password_auth_callback
@@ -31,9 +33,6 @@ def auth_callback(username: str, password: str) -> Optional[cl.User]:
 
 async def setup_settings():
 
-    bedrock = boto3.client("bedrock", region_name=AWS_REGION)
-    bedrock_agent = boto3.client('bedrock-agent', region_name=AWS_REGION)
-    
     response = bedrock_agent.list_knowledge_bases(maxResults = 5)
 
     kb_id_list = []
@@ -356,9 +355,7 @@ async def main_retrieve(message: cl.Message):
 
                 response = bedrock_model_strategy.send_request(request, bedrock_runtime, bedrock_model_id)
 
-                stream = response["body"]
-
-                await bedrock_model_strategy.process_response_stream(stream, msg)
+                await bedrock_model_strategy.process_response(response, msg)
 
                 step_llm.elements = elements
 
@@ -386,6 +383,10 @@ class BedrockModelStrategy():
         response = bedrock_runtime.invoke_model_with_response_stream(modelId = bedrock_model_id, body = json.dumps(request))
         return response
 
+    async def process_response(self, response, msg : cl.Message):
+        stream = response["body"]
+        await self.process_response_stream(stream, msg)
+
     async def process_response_stream(self, stream, msg : cl.Message):
         print("unknown")
         await msg.stream_token("unknown")
@@ -402,6 +403,7 @@ class AnthropicBedrockModelStrategy(BedrockModelStrategy):
             #"stop_sequences": []
         }
         return request
+
 
     async def process_response_stream(self, stream, msg : cl.Message):
         if stream:
