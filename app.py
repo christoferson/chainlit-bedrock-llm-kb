@@ -48,8 +48,9 @@ async def setup_settings():
 
     model_ids = [
         "anthropic.claude-v2", #"anthropic.claude-v2:0:18k",
-        "anthropic.claude-v2:1", #"anthropic.claude-v2:1:18k", "anthropic.claude-v2:1:200k", 
-        "anthropic.claude-instant-v1"
+        "anthropic.claude-instant-v1",
+        "anthropic.claude-3-sonnet-20240229-v1:0",
+        "anthropic.claude-3-haiku-20240307-v1:0",
     ]
 
     settings = await cl.ChatSettings(
@@ -330,21 +331,20 @@ async def main_retrieve(message: cl.Message):
 
             try:
 
-                bedrock_model_strategy = app_bedrock.AnthropicBedrockModelStrategy()
+                bedrock_model_strategy = app_bedrock.BedrockModelStrategyFactory.create(bedrock_model_id)
 
                 extra_instructions = ""
                 if strict == True:
                     extra_instructions = "If you don't know the answer or not in the provided context, just say that you don't know, don't try to make up an answer. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context. Keep the answer simple."
 
-                prompt = f"""Use the following pieces of context to answer the user's question. 
-                {extra_instructions}
+                prompt = f"""Use the following pieces of context to answer the user's question. {extra_instructions}
                 Here is the context: <context>{context_info}</context>
                 \n\nHuman: {query}
 
                 Assistant:
                 """
 
-                elements.append(cl.Text(name=f"prompt", content=prompt, display="inline"))
+                elements.append(cl.Text(name=f"prompt", content=prompt.replace("\n\n", "").rstrip(), display="inline"))
 
                 max_tokens = inference_parameters.get("max_tokens_to_sample")
                 temperature = inference_parameters.get('temperature')

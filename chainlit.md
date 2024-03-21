@@ -14,3 +14,10 @@ We can't wait to see what you create with Chainlit! Happy coding! 💻😊
 To modify the welcome screen, edit the `chainlit.md` file at the root of your project. If you do not want a welcome screen, just leave this file empty.
 
 Version 1.1
+
+
+##### Models
+anthropic.claude-instant-v1
+anthropic.claude-v2
+anthropic.claude-3-sonnet-20240229-v1:0
+anthropic.claude-3-haiku-20240307-v1:0
