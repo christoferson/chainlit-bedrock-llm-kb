@@ -8,6 +8,7 @@ import logging
 import traceback
 import json
 import app_bedrock
+import app_retrieve_generate
 
 aws_region = os.environ["AWS_REGION"]
 AWS_REGION = os.environ["AWS_REGION"]
@@ -179,7 +180,7 @@ async def main(message: cl.Message):
     mode = cl.user_session.get("mode") 
     #["RetrieveAndGenerate", "Retrieve"],
     if mode == "RetrieveAndGenerate":
-        await main_retrieve_and_generate(message)
+        await app_retrieve_generate.main_retrieve_and_generate(message)
     else:
         await main_retrieve(message)
 
