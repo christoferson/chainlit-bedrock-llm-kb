@@ -9,6 +9,7 @@ import traceback
 import json
 import app_bedrock
 import app_retrieve_generate
+import app_retrieve
 
 aws_region = os.environ["AWS_REGION"]
 AWS_REGION = os.environ["AWS_REGION"]
@@ -182,7 +183,7 @@ async def main(message: cl.Message):
     if mode == "RetrieveAndGenerate":
         await app_retrieve_generate.main_retrieve_and_generate(message)
     else:
-        await main_retrieve(message)
+        await app_retrieve.main_retrieve(message)
 
 
 async def main_retrieve_and_generate(message: cl.Message):
@@ -336,7 +337,9 @@ async def main_retrieve(message: cl.Message):
 
                 extra_instructions = ""
                 if strict == True:
-                    extra_instructions = "If you don't know the answer or not in the provided context, just say that you don't know, don't try to make up an answer. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context. Keep the answer simple."
+                    #  Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context.
+                    # Keep the answer simple.
+                    extra_instructions = "If you don't know the answer or it can't be derived from the provided context, just say that you don't know, and don't try to make up an answer."
 
                 prompt = f"""Use the following pieces of context to answer the user's question. {extra_instructions}
                 Here is the context: <context>{context_info}</context>
