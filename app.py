@@ -171,6 +171,8 @@ async def main():
 
     await setup_agent(settings)
 
+    #bedrock_list_models(bedrock)
+
 
 @cl.on_message
 async def main(message: cl.Message):

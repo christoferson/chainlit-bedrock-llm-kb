@@ -61,7 +61,7 @@ async def main_retrieve(message: cl.Message):
                     score = retrievalResult['score']
                     print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
                     #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
-                    context_info += f"<p>${text}</p>\n" #context_info += f"${text}\n"
+                    context_info += f"${text}\n" #context_info += f"<p>${text}</p>\n" #context_info += f"${text}\n"
                     #await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)} text={excerpt}\n")
                     await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)}\n")
                     reference_elements.append(cl.Text(name=f"[{i+1}] {uri}", content=text, display="inline"))
@@ -85,6 +85,8 @@ async def main_retrieve(message: cl.Message):
 
                 bedrock_model_strategy = app_bedrock.BedrockModelStrategyFactory.create(bedrock_model_id)
 
+                # Create Prompt
+
                 extra_instructions = ""
                 if strict == True:
                     extra_instructions = "If you don't know the answer or not in the provided context, just say that you don't know, don't try to make up an answer. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context. Keep the answer simple."
@@ -95,6 +97,23 @@ async def main_retrieve(message: cl.Message):
 
                 Assistant:
                 """
+
+                if bedrock_model_id.startswith("anthropic.claude-3"):
+                    if strict == True:
+                        prompt = f"""Use the following pieces of context to answer the user's question. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context.
+                            Here is the context: <context>{context_info}</context>
+                            
+                            {query}
+                            """
+                        prompt = f"""Please read the user's question supplied within the <question> tags. Then, using only the contextual information provided above within the <context> tags, generate an answer to the question.
+                        <context>{context_info}</context>
+                        <question>{query}</question>"""
+                    else:
+                        prompt = f"""Please read the user's question supplied within the <question> tags. Then, use the contextual information provided above within the <context> tags as supplemental information to generate an answer to the question.
+                        <context>{context_info}</context>
+                        <question>{query}</question>"""
+                
+                # End - Create Prompt 
 
                 elements.append(cl.Text(name=f"prompt", content=prompt.replace("\n\n", "").rstrip(), display="inline"))
 
