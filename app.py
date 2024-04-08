@@ -6,24 +6,18 @@ from chainlit.input_widget import Select, Slider, Switch
 from typing import Optional
 import logging
 import traceback
-import json
 import app_bedrock
 import app_retrieve_generate
 import app_retrieve
 
-aws_region = os.environ["AWS_REGION"]
 AWS_REGION = os.environ["AWS_REGION"]
-#aws_profile = os.environ["AWS_PROFILE"]
 AUTH_ADMIN_USR = os.environ["AUTH_ADMIN_USR"]
 AUTH_ADMIN_PWD = os.environ["AUTH_ADMIN_PWD"]
-
-#knowledge_base_id = os.environ["BEDROCK_KB_ID"]
 
 bedrock = boto3.client("bedrock", region_name=AWS_REGION)
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
 bedrock_agent = boto3.client('bedrock-agent', region_name=AWS_REGION)
 bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
-
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str) -> Optional[cl.User]:
@@ -142,7 +136,8 @@ async def setup_agent(settings):
         top_p = float(settings["TopP"]),
         top_k = int(settings["TopK"]),
         max_tokens_to_sample = int(settings["MaxTokenCount"]),
-        stop_sequences =  []
+        stop_sequences =  [],
+        system_message = "You are a helpful assistant. Unless instructed, omit any preamble and provide straight to the point concise answers."
     )
 
     cl.user_session.set("inference_parameters", inference_parameters)
@@ -349,7 +344,6 @@ async def main_retrieve(message: cl.Message):
 
                 Assistant:
                 """
-
                 elements.append(cl.Text(name=f"prompt", content=prompt.replace("\n\n", "").rstrip(), display="inline"))
 
                 max_tokens = inference_parameters.get("max_tokens_to_sample")

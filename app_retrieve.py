@@ -109,11 +109,24 @@ async def main_retrieve(message: cl.Message):
                         <context>{context_info}</context>
                         <question>{query}</question>"""
                     else:
-                        prompt = f"""Please read the user's question supplied within the <question> tags. Then, use the contextual information provided above within the <context> tags as supplemental information to generate an answer to the question.
+                        #prompt = f"""Please read the user's question supplied within the <question> tags. Unless there is an explicit request, provide consise or 1 liner answers.
+                        prompt = f"""Please read the user's question supplied within the <question> tags. 
                         <context>{context_info}</context>
                         <question>{query}</question>"""
                 
+                    prompt = f"""Please answer the question with the provided context while following instructions provided. 
+                    Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer.
+                    <context>{context_info}</context>
+                    <instructions>
+                    1. Do not reformat, or convert any numeric values. Inserting commas is allowed for readability.
+                    </instructions>
+                    <question>{query}</question>"""
+
+                #Unless instructed, omit any preamble and provide straight to the point concise answers.
                 # End - Create Prompt 
+
+                system_message = inference_parameters.get("system_message")
+                elements.append(cl.Text(name=f"system", content=system_message.replace("\n\n", "").rstrip(), display="inline")) 
 
                 elements.append(cl.Text(name=f"prompt", content=prompt.replace("\n\n", "").rstrip(), display="inline"))
 
