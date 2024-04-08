@@ -89,12 +89,11 @@ async def main_retrieve(message: cl.Message):
 
                 strict_instructions = ""
                 if strict == True:
-                    strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context."
+                    strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context. Otherwise, just say that you don't know and don't make up an answer."
 
                 prompt = f"""Please answer the question with the provided context while following instructions provided. 
-                Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer.
-                {strict_instructions}
-                Here is the context: <context>{context_info}</context>
+                Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer. {strict_instructions}
+                Here is the context: {context_info}
                 \n\nHuman: {query}
 
                 Assistant:

@@ -32,3 +32,9 @@ Before answering, please think about the question within <thinking></thinking> X
 - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/bedrock-agent-runtime/client/retrieve_and_generate.html
 
 - https://docs.google.com/presentation/d/1tjvAebcEyR8la3EmVwvjC7PHR8gfSrcsGKfTPAaManw/edit?pli=1#slide=id.g297e9aa6f0f_0_2411
+
+- https://docs.google.com/spreadsheets/d/19jzLgRruG9kjUQNKtCg1ZjdD6l6weA6qRXG5zLIAhC8/edit#gid=352404979
+
+- https://docs.anthropic.com/claude/docs/prompt-engineering
+
+- https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-claude.html
