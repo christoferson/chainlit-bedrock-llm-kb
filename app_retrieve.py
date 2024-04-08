@@ -87,11 +87,13 @@ async def main_retrieve(message: cl.Message):
 
                 # Create Prompt
 
-                extra_instructions = ""
+                strict_instructions = ""
                 if strict == True:
-                    extra_instructions = "If you don't know the answer or not in the provided context, just say that you don't know, don't try to make up an answer. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context. Keep the answer simple."
+                    strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context."
 
-                prompt = f"""Use the following pieces of context to answer the user's question. {extra_instructions}
+                prompt = f"""Please answer the question with the provided context while following instructions provided. 
+                Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer.
+                {strict_instructions}
                 Here is the context: <context>{context_info}</context>
                 \n\nHuman: {query}
 
@@ -99,30 +101,18 @@ async def main_retrieve(message: cl.Message):
                 """
 
                 if bedrock_model_id.startswith("anthropic.claude-3"):
+                    strict_instructions = ""
                     if strict == True:
-                        prompt = f"""Use the following pieces of context to answer the user's question. Do not answer any question that cannot be answered by the provided context, just say it is not in the provided context.
-                            Here is the context: <context>{context_info}</context>
-                            
-                            {query}
-                            """
-                        prompt = f"""Please read the user's question supplied within the <question> tags. Then, using only the contextual information provided above within the <context> tags, generate an answer to the question.
-                        <context>{context_info}</context>
-                        <question>{query}</question>"""
-                    else:
-                        #prompt = f"""Please read the user's question supplied within the <question> tags. Unless there is an explicit request, provide consise or 1 liner answers.
-                        prompt = f"""Please read the user's question supplied within the <question> tags. 
-                        <context>{context_info}</context>
-                        <question>{query}</question>"""
-                
+                        strict_instructions = "\n- Only answer if you know the answer with certainty and is evident from the provided context."
+
                     prompt = f"""Please answer the question with the provided context while following instructions provided. 
                     Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer.
                     <context>{context_info}</context>
                     <instructions>
-                    1. Do not reformat, or convert any numeric values. Inserting commas is allowed for readability.
+                    - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {strict_instructions}
                     </instructions>
                     <question>{query}</question>"""
 
-                #Unless instructed, omit any preamble and provide straight to the point concise answers.
                 # End - Create Prompt 
 
                 system_message = inference_parameters.get("system_message")
