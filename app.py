@@ -75,6 +75,7 @@ async def setup_settings():
                 initial_index = 1,
             ),
             Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=True),
+            Switch(id="Terse", label="Terse - Terse & Consise Answers", initial=True),
             Select(
                 id = "Model",
                 label = "Foundation Model",
@@ -143,6 +144,10 @@ async def setup_agent(settings):
         system_message = "You are a helpful assistant. Unless instructed, omit any preamble and provide straight to the point concise answers."
     )
 
+    application_options = dict (
+        option_terse = settings["Terse"]
+    )
+
     cl.user_session.set("inference_parameters", inference_parameters)
     cl.user_session.set("bedrock_model_id", bedrock_model_id)
     cl.user_session.set("llm_model_arn", llm_model_arn)
@@ -150,6 +155,8 @@ async def setup_agent(settings):
     cl.user_session.set("kb_retrieve_document_count", kb_retrieve_document_count)
     cl.user_session.set("mode", mode)
     cl.user_session.set("strict", strict)
+    cl.user_session.set("application_options", application_options)
+    
     
 
 def bedrock_list_models(bedrock):

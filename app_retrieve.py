@@ -12,12 +12,14 @@ bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_RE
 
 async def main_retrieve(message: cl.Message):
 
+    application_options = cl.user_session.get("application_options")
     session_id = cl.user_session.get("session_id") 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
     llm_model_arn = cl.user_session.get("llm_model_arn") 
     bedrock_model_id = cl.user_session.get("bedrock_model_id")
     inference_parameters = cl.user_session.get("inference_parameters")
     strict = cl.user_session.get("strict")
+    option_terse = application_options.get("option_terse")
     kb_retrieve_document_count = cl.user_session.get("kb_retrieve_document_count")
 
     query = message.content
@@ -91,8 +93,12 @@ async def main_retrieve(message: cl.Message):
                 if strict == True:
                     strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context. Otherwise, just say that you don't know and don't make up an answer."
 
+                terse_instructions = ""
+                if option_terse == True:
+                    terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
+
                 prompt = f"""Please answer the question with the provided context while following instructions provided. 
-                Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer. {strict_instructions}
+                {terse_instructions} {strict_instructions}
                 Here is the context: {context_info}
                 \n\nHuman: {query}
 
@@ -104,8 +110,7 @@ async def main_retrieve(message: cl.Message):
                     if strict == True:
                         strict_instructions = "\n- Only answer if you know the answer with certainty and is evident from the provided context."
 
-                    prompt = f"""Please answer the question with the provided context while following instructions provided. 
-                    Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer.
+                    prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
                     <context>{context_info}</context>
                     <instructions>
                     - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {strict_instructions}
