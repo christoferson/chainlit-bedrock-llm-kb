@@ -37,8 +37,8 @@ class BedrockModelStrategyFactory():
         #    model_strategy = AI21BedrockModelStrategy()
         #elif provider == "cohere": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-cohere-command.html
         #    model_strategy = CohereBedrockModelStrategy()
-        #elif provider == "amazon": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-text.html
-        #    model_strategy = TitanBedrockModelStrategy()
+        elif provider == "amazon": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-text.html
+            model_strategy = TitanBedrockModelStrategy()
         #elif provider == "meta": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-meta.html
         #    model_strategy = MetaBedrockModelStrategy()
         elif provider == "mistral": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-mistral.html
@@ -180,6 +180,48 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
                 lag = invocation_metrics["firstByteLatency"]
                 stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
                 await msg.stream_token(f"\n\n{stats}")
+
+
+class TitanBedrockModelStrategy(BedrockModelStrategy):
+
+    def create_request(self, inference_parameters: dict, prompt : str) -> dict:
+        request = {
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "temperature": inference_parameters.get("temperature"),
+                "topP": inference_parameters.get("top_p"), #0.5,
+                #"top_k": inference_parameters.get("top_k"), #300,
+                "maxTokenCount": inference_parameters.get("max_tokens_to_sample"), #2048,
+                #"stop_sequences": []
+            }
+        }
+        return request
+
+    async def process_response_stream(self, stream, msg : cl.Message):
+        #print("titan")
+        #await msg.stream_token("Titan")
+        if stream:
+            for event in stream:
+                chunk = event.get("chunk")
+                if chunk:
+                    object = json.loads(chunk.get("bytes").decode())
+                    #print(object)
+                    if "outputText" in object:
+                        completion = object["outputText"]
+                        await msg.stream_token(completion)
+                    if "completionReason" in object:
+                        finish_reason = object["completionReason"]
+                        if finish_reason:
+                            if "amazon-bedrock-invocationMetrics" in object:
+                                invocation_metrics = object["amazon-bedrock-invocationMetrics"]
+                                if invocation_metrics:
+                                    input_token_count = invocation_metrics["inputTokenCount"]
+                                    output_token_count = invocation_metrics["outputTokenCount"]
+                                    latency = invocation_metrics["invocationLatency"]
+                                    lag = invocation_metrics["firstByteLatency"]
+                                    stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag} finish_reason={finish_reason}"
+                                    await msg.stream_token(f"\n\n{stats}")
+
 
 class MistralBedrockModelStrategy(BedrockModelStrategy):
 

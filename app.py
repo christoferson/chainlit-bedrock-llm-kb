@@ -47,6 +47,7 @@ async def setup_settings():
         "anthropic.claude-instant-v1",
         "anthropic.claude-3-sonnet-20240229-v1:0",
         "anthropic.claude-3-haiku-20240307-v1:0",
+        "amazon.titan-text-express-v1",
         "mistral.mistral-7b-instruct-v0:2",
         "mistral.mixtral-8x7b-instruct-v0:1"
     ]
