@@ -84,7 +84,7 @@ async def setup_settings():
             ),
             Slider(
                 id = "Temperature",
-                label = "Temperature Analytical vs Creative",
+                label = "Temperature - Analytical vs Creative",
                 initial = 0.0,
                 min = 0,
                 max = 1,
@@ -92,7 +92,7 @@ async def setup_settings():
             ),
             Slider(
                 id = "TopP",
-                label = "Top P",
+                label = "Top P - High Diversity vs Low Diversity",
                 initial = 1,
                 min = 0,
                 max = 1,
@@ -100,7 +100,7 @@ async def setup_settings():
             ),
             Slider(
                 id = "TopK",
-                label = "Top K",
+                label = "Top K - High Probability vs Low Probability",
                 initial = 250,
                 min = 0,
                 max = 500,
@@ -141,7 +141,8 @@ async def setup_agent(settings):
         top_k = int(settings["TopK"]),
         max_tokens_to_sample = int(settings["MaxTokenCount"]),
         stop_sequences =  [],
-        system_message = "You are a helpful assistant. Unless instructed, omit any preamble and provide straight to the point concise answers."
+        #system_message = "You are a helpful assistant. Unless instructed, omit any preamble and provide straight to the point concise answers."
+        system_message = "You are a helpful assistant and tries to answer questions as best as you can."
     )
 
     application_options = dict (

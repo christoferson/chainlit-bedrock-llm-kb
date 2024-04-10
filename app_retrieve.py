@@ -108,7 +108,7 @@ async def main_retrieve(message: cl.Message):
                 if bedrock_model_id.startswith("anthropic.claude-3"):
                     strict_instructions = ""
                     if strict == True:
-                        strict_instructions = "\n- Only answer if you know the answer with certainty and is evident from the provided context."
+                        strict_instructions = "- Only answer if you know the answer with certainty and is evident from the provided context."
 
                     prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
                     <context>{context_info}</context>
@@ -144,7 +144,7 @@ async def main_retrieve(message: cl.Message):
             finally:
                 await step_llm.send()
 
-        await msg.stream_token(f". strict={strict}\n")
+        await msg.stream_token(f". strict={strict} terse={option_terse}\n")
         await msg.send()
 
     except Exception as e:
