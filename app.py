@@ -34,13 +34,13 @@ async def setup_settings():
 
     kb_id_list = []
     for i, knowledgeBaseSummary in enumerate(response['knowledgeBaseSummaries']):
-        knowledgeBaseId = knowledgeBaseSummary['knowledgeBaseId']
+        kb_id = knowledgeBaseSummary['knowledgeBaseId']
         name = knowledgeBaseSummary['name']
         description = knowledgeBaseSummary['description']
         status = knowledgeBaseSummary['status']
         updatedAt = knowledgeBaseSummary['updatedAt']
-        #print(f"{i} RetrievalResult: {knowledgeBaseId} {name} {description} {status} {updatedAt}")
-        kb_id_list.append(knowledgeBaseId)
+        #print(f"{i} RetrievalResult: {kb_id} {name} {description} {status} {updatedAt}")
+        kb_id_list.append(f"{kb_id} {name}")
 
     model_ids = [
         "anthropic.claude-v2", #"anthropic.claude-v2:0:18k",
@@ -129,6 +129,7 @@ async def setup_agent(settings):
     print("Setup Agent: ", settings)
 
     knowledge_base_id = settings["KnowledgeBase"]
+    knowledge_base_id = knowledge_base_id.split(" ", 1)[0]
     
     llm_model_arn = "arn:aws:bedrock:{}::foundation-model/{}".format(AWS_REGION, settings["Model"])
     mode = settings["Mode"]

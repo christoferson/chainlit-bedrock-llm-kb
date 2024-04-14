@@ -41,6 +41,8 @@ class BedrockModelStrategy():
         print("unknown")
         await msg.stream_token("unknown")
 
+    #Todo Utils: amazon-bedrock-invocationMetrics 
+
 
 class BedrockModelStrategyFactory():
 
@@ -226,6 +228,28 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
 
 class CohereBedrockModelStrategy(BedrockModelStrategy):
 
+    def create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
+
+        option_terse = application_options.get("option_terse")
+        option_strict = application_options.get("option_strict")
+
+        strict_instructions = ""
+        if option_strict == True:
+            strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context. Otherwise, just say that you don't know and don't make up an answer."
+
+        terse_instructions = ""
+        if option_terse == True:
+            terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
+
+        prompt = f"""Please answer the question with the provided context while following instructions provided. 
+        {terse_instructions} {strict_instructions}
+        Here is the context: {context_info}
+        \n\nHuman: {query}
+
+        AI:"""
+
+        return prompt
+
     def create_request(self, inference_parameters: dict, prompt : str) -> dict:
         request = {
             "prompt": prompt,
@@ -238,6 +262,11 @@ class CohereBedrockModelStrategy(BedrockModelStrategy):
         }
         return request
 
+    async def process_response(self, response, msg : cl.Message):
+        #print(f"COHERE: {response}")
+        stream = response["body"]
+        await self.process_response_stream(stream, msg)
+
     async def process_response_stream(self, stream, msg : cl.Message):
         #print("cohere")
         #await msg.stream_token("Cohere")
@@ -246,14 +275,19 @@ class CohereBedrockModelStrategy(BedrockModelStrategy):
                 chunk = event.get("chunk")
                 if chunk:
                     object = json.loads(chunk.get("bytes").decode())
-                    if "generations" in object:
-                        generations = object["generations"]
-                        for generation in generations:
-                            print(generation)
-                            await msg.stream_token(generation["text"])
-                            if "finish_reason" in generation:
-                                finish_reason = generation["finish_reason"]
-                                await msg.stream_token(f"\nfinish_reason={finish_reason}")
+                    is_finished = object["is_finished"]
+                    if is_finished == False:
+                        await msg.stream_token(object["text"])
+                    else:
+                        if "amazon-bedrock-invocationMetrics" in object:
+                            invocation_metrics = object["amazon-bedrock-invocationMetrics"]
+                            if invocation_metrics:
+                                input_token_count = invocation_metrics["inputTokenCount"]
+                                output_token_count = invocation_metrics["outputTokenCount"]
+                                latency = invocation_metrics["invocationLatency"]
+                                lag = invocation_metrics["firstByteLatency"]
+                                stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
+                                await msg.stream_token(f"\n\n{stats}")
 
 
 class TitanBedrockModelStrategy(BedrockModelStrategy):
