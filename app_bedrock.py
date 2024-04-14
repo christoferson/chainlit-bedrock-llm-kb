@@ -3,6 +3,29 @@ import json
 
 class BedrockModelStrategy():
 
+    def create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
+
+        option_terse = application_options.get("option_terse")
+        option_strict = application_options.get("option_strict")
+
+        strict_instructions = ""
+        if option_strict == True:
+            strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context. Otherwise, just say that you don't know and don't make up an answer."
+
+        terse_instructions = ""
+        if option_terse == True:
+            terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
+
+        prompt = f"""Please answer the question with the provided context while following instructions provided. 
+        {terse_instructions} {strict_instructions}
+        Here is the context: {context_info}
+        \n\nHuman: {query}
+
+        Assistant:
+        """
+
+        return prompt
+
     def create_request(self, inference_parameters: dict, prompt : str) -> dict:
         pass
 
@@ -125,10 +148,30 @@ class AnthropicClaude3MsgBedrockModelStrategy(BedrockModelStrategy):
         pass
 
 
-
-
 class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
 
+    def create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
+
+        option_terse = application_options.get("option_terse")
+        option_strict = application_options.get("option_strict")
+
+        strict_instructions = ""
+        if option_strict == True:
+            strict_instructions = "- Only answer if you know the answer with certainty and is evident from the provided context."
+
+        terse_instructions = ""
+        if option_terse == True:
+            terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
+
+        prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
+        <context>{context_info}</context>
+        <instructions>
+        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {strict_instructions}
+        </instructions>
+        <question>{query}</question>"""
+
+        return prompt
+    
     def create_request(self, inference_parameters: dict, prompt : str) -> dict:
 
         user_message =  {"role": "user", "content": f"{prompt}"}

@@ -87,35 +87,9 @@ async def main_retrieve(message: cl.Message):
 
                 bedrock_model_strategy = app_bedrock.BedrockModelStrategyFactory.create(bedrock_model_id)
 
-                # Create Prompt
+                # Create Prompt create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
 
-                strict_instructions = ""
-                if strict == True:
-                    strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context. Otherwise, just say that you don't know and don't make up an answer."
-
-                terse_instructions = ""
-                if option_terse == True:
-                    terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
-
-                prompt = f"""Please answer the question with the provided context while following instructions provided. 
-                {terse_instructions} {strict_instructions}
-                Here is the context: {context_info}
-                \n\nHuman: {query}
-
-                Assistant:
-                """
-
-                if bedrock_model_id.startswith("anthropic.claude-3"):
-                    strict_instructions = ""
-                    if strict == True:
-                        strict_instructions = "- Only answer if you know the answer with certainty and is evident from the provided context."
-
-                    prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
-                    <context>{context_info}</context>
-                    <instructions>
-                    - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {strict_instructions}
-                    </instructions>
-                    <question>{query}</question>"""
+                prompt = bedrock_model_strategy.create_prompt(application_options, context_info, query)
 
                 # End - Create Prompt 
 

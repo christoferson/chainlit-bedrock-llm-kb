@@ -148,7 +148,8 @@ async def setup_agent(settings):
     )
 
     application_options = dict (
-        option_terse = settings["Terse"]
+        option_terse = settings["Terse"],
+        option_strict = settings["Strict"]
     )
 
     cl.user_session.set("inference_parameters", inference_parameters)
