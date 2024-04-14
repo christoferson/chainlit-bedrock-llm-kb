@@ -35,8 +35,8 @@ class BedrockModelStrategyFactory():
             model_strategy = AnthropicBedrockModelStrategy()
         #elif provider == "ai21": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-jurassic2.html
         #    model_strategy = AI21BedrockModelStrategy()
-        #elif provider == "cohere": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-cohere-command.html
-        #    model_strategy = CohereBedrockModelStrategy()
+        elif provider == "cohere": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-cohere-command.html
+            model_strategy = CohereBedrockModelStrategy()
         elif provider == "amazon": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-text.html
             model_strategy = TitanBedrockModelStrategy()
         #elif provider == "meta": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-meta.html
@@ -180,6 +180,37 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
                 lag = invocation_metrics["firstByteLatency"]
                 stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
                 await msg.stream_token(f"\n\n{stats}")
+
+class CohereBedrockModelStrategy(BedrockModelStrategy):
+
+    def create_request(self, inference_parameters: dict, prompt : str) -> dict:
+        request = {
+            "prompt": prompt,
+            "temperature": inference_parameters.get("temperature"),
+            "p": inference_parameters.get("top_p"), #0.5,
+            "k": inference_parameters.get("top_k"), #300,
+            "max_tokens": inference_parameters.get("max_tokens_to_sample"), #2048,
+            "stream": True,
+            #"stop_sequences": []
+        }
+        return request
+
+    async def process_response_stream(self, stream, msg : cl.Message):
+        #print("cohere")
+        #await msg.stream_token("Cohere")
+        if stream:
+            for event in stream:
+                chunk = event.get("chunk")
+                if chunk:
+                    object = json.loads(chunk.get("bytes").decode())
+                    if "generations" in object:
+                        generations = object["generations"]
+                        for generation in generations:
+                            print(generation)
+                            await msg.stream_token(generation["text"])
+                            if "finish_reason" in generation:
+                                finish_reason = generation["finish_reason"]
+                                await msg.stream_token(f"\nfinish_reason={finish_reason}")
 
 
 class TitanBedrockModelStrategy(BedrockModelStrategy):

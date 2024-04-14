@@ -49,7 +49,9 @@ async def setup_settings():
         "anthropic.claude-3-haiku-20240307-v1:0",
         "amazon.titan-text-express-v1",
         "mistral.mistral-7b-instruct-v0:2",
-        "mistral.mixtral-8x7b-instruct-v0:1"
+        "mistral.mixtral-8x7b-instruct-v0:1",
+        "cohere.command-light-text-v14",
+        "cohere.command-text-v14"
     ]
 
     settings = await cl.ChatSettings(
