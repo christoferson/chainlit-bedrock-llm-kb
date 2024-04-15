@@ -53,7 +53,8 @@ async def setup_settings():
         "cohere.command-light-text-v14",
         "cohere.command-text-v14",
         #"meta.llama2-13b-chat-v1",
-        #"meta.llama2-70b-chat-v1"
+        #"meta.llama2-70b-chat-v1",
+        "ai21.j2-mid"
     ]
 
     settings = await cl.ChatSettings(
