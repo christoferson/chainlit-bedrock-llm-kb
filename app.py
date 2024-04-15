@@ -51,7 +51,9 @@ async def setup_settings():
         "mistral.mistral-7b-instruct-v0:2",
         "mistral.mixtral-8x7b-instruct-v0:1",
         "cohere.command-light-text-v14",
-        "cohere.command-text-v14"
+        "cohere.command-text-v14",
+        #"meta.llama2-13b-chat-v1",
+        #"meta.llama2-70b-chat-v1"
     ]
 
     settings = await cl.ChatSettings(

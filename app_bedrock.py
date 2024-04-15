@@ -64,8 +64,8 @@ class BedrockModelStrategyFactory():
             model_strategy = CohereBedrockModelStrategy()
         elif provider == "amazon": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-titan-text.html
             model_strategy = TitanBedrockModelStrategy()
-        #elif provider == "meta": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-meta.html
-        #    model_strategy = MetaBedrockModelStrategy()
+        elif provider == "meta": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-meta.html
+            model_strategy = MetaBedrockModelStrategy()
         elif provider == "mistral": # https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-mistral.html
             model_strategy = MistralBedrockModelStrategy()
         else:
@@ -262,11 +262,6 @@ class CohereBedrockModelStrategy(BedrockModelStrategy):
         }
         return request
 
-    async def process_response(self, response, msg : cl.Message):
-        #print(f"COHERE: {response}")
-        stream = response["body"]
-        await self.process_response_stream(stream, msg)
-
     async def process_response_stream(self, stream, msg : cl.Message):
         #print("cohere")
         #await msg.stream_token("Cohere")
@@ -370,3 +365,66 @@ class MistralBedrockModelStrategy(BedrockModelStrategy):
                                     lag = invocation_metrics["firstByteLatency"]
                                     stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
                                     await msg.stream_token(f"\n\n{stats}")
+
+# Issue - Infinite Please answer the question with the provided context while following instructions provided.
+class MetaBedrockModelStrategy(BedrockModelStrategy):
+
+    def create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
+
+        option_terse = application_options.get("option_terse")
+        option_strict = application_options.get("option_strict")
+
+        strict_instructions = ""
+        if option_strict == True:
+            strict_instructions = "Only answer if you know the answer with certainty and is evident from the provided context. Otherwise, just say that you don't know and don't make up an answer."
+
+        terse_instructions = ""
+        if option_terse == True:
+            terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
+
+        prompt = f"""<<SYS>>Please answer the question with the provided context while following instructions provided. 
+        {terse_instructions} {strict_instructions}<</SYS>>
+        Here is the context: {context_info}
+        
+        Human: {query}
+
+        Assistant:"""
+
+        return prompt
+    
+    def create_request(self, inference_parameters: dict, prompt : str) -> dict:
+        request = {
+            "prompt": prompt,           
+            "temperature": inference_parameters.get("temperature"),
+            "top_p": inference_parameters.get("top_p"), #0.5,
+            #"top_k": inference_parameters.get("top_k"), #300,
+            "max_gen_len": inference_parameters.get("max_tokens_to_sample"), #2048,
+            #"stop_sequences": []
+        }
+        return request
+
+    async def process_response_stream(self, stream, msg : cl.Message):
+        print("meta")
+        await msg.stream_token("Meta")
+        if stream:
+            for event in stream:
+                chunk = event.get("chunk")
+                if chunk:
+                    object = json.loads(chunk.get("bytes").decode())
+                    print(object)
+                    if "generation" in object:
+                        completion = object["generation"]
+                        await msg.stream_token(completion)
+                    if "stop_reason" in object:
+                        finish_reason = object["stop_reason"]
+                        if finish_reason:
+                            if "amazon-bedrock-invocationMetrics" in object:
+                                invocation_metrics = object["amazon-bedrock-invocationMetrics"]
+                                if invocation_metrics:
+                                    input_token_count = invocation_metrics["inputTokenCount"]
+                                    output_token_count = invocation_metrics["outputTokenCount"]
+                                    latency = invocation_metrics["invocationLatency"]
+                                    lag = invocation_metrics["firstByteLatency"]
+                                    stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag} finish_reason={finish_reason}"
+                                    await msg.stream_token(f"\n\n{stats}")
+

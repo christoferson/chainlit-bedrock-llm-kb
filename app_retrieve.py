@@ -63,7 +63,7 @@ async def main_retrieve(message: cl.Message):
                     score = retrievalResult['score']
                     print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
                     #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
-                    context_info += f"${text}\n" #context_info += f"<p>${text}</p>\n" #context_info += f"${text}\n"
+                    context_info += f"{text}\n" #context_info += f"<p>${text}</p>\n" #context_info += f"${text}\n"
                     #await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)} text={excerpt}\n")
                     await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)}\n")
                     reference_elements.append(cl.Text(name=f"[{i+1}] {uri}", content=text, display="inline"))
