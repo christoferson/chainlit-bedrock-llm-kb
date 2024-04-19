@@ -13,6 +13,8 @@ async def main_retrieve_and_generate(message: cl.Message):
     session_id = cl.user_session.get("session_id") 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
     llm_model_arn = cl.user_session.get("llm_model_arn") 
+    inference_parameters = cl.user_session.get("inference_parameters")
+    kb_retrieve_document_count = cl.user_session.get("kb_retrieve_document_count")
 
     query = message.content
     query = query[0:900]
@@ -38,7 +40,7 @@ async def main_retrieve_and_generate(message: cl.Message):
                     'modelArn': llm_model_arn,
                     'retrievalConfiguration': {
                         'vectorSearchConfiguration': {
-                            #'numberOfResults': 3, # The numberOfResults field is currently unsupported for RetrieveAndGenerate.
+                            'numberOfResults': kb_retrieve_document_count,  #Minimum value of 1. Maximum value of 100
                             #'overrideSearchType': 'HYBRID'|'SEMANTIC'
                         }
                     }

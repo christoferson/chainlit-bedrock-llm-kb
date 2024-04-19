@@ -79,7 +79,6 @@ async def main_retrieve(message: cl.Message):
 
         async with cl.Step(name="Model", type="llm", root=False) as step_llm:
             step_llm.input = msg.content
-            #step_llm.output = f"Test"
 
             elements = []
 
