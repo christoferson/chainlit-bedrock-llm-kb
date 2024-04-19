@@ -68,9 +68,9 @@ async def setup_settings():
             Slider(
                 id = "RetrieveDocumentCount",
                 label = "KnowledgeBase DocumentCount",
-                initial = 2,
+                initial = 3,
                 min = 1,
-                max = 5,
+                max = 8,
                 step = 1,
             ),
             Select(
@@ -114,7 +114,7 @@ async def setup_settings():
             Slider(
                 id="MaxTokenCount",
                 label="Max Token Size",
-                initial = 2048,
+                initial = 2560,
                 min = 256,
                 max = 4096,
                 step = 256,
