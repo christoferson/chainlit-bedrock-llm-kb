@@ -4,6 +4,9 @@ chainlit-bedrock-llm-kb
 ##### Install Dependencies
 
 pip install --upgrade boto3
+pip install --upgrade chainlit
+pip install --upgrade python-dotenv
+
 
 ##### Launch Locally
 
