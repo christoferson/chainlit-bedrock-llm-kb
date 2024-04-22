@@ -10,6 +10,27 @@ AWS_REGION = os.environ["AWS_REGION"]
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
 bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
 
+async def create_prompt(application_options: dict, query: str) -> str:
+
+        option_terse = application_options.get("option_terse")
+        option_strict = application_options.get("option_strict")
+
+        strict_instructions = ""
+        if option_strict == True:
+            strict_instructions = "Only answer if you know the answer with certainty. Otherwise, just say that you don't know and don't make up an answer."
+
+        terse_instructions = ""
+        if option_terse == True:
+            terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
+
+        prompt = f"""Please answer the question while following instructions provided. {terse_instructions} {strict_instructions}
+        \n\nHuman: {query}
+
+        Assistant:
+        """
+
+        return prompt
+
 async def main_retrieve(message: cl.Message):
 
     application_options = cl.user_session.get("application_options")
@@ -30,53 +51,6 @@ async def main_retrieve(message: cl.Message):
 
     try:
 
-        context_info = ""
-
-        async with cl.Step(name="KnowledgeBase", type="llm", root=False) as step:
-            step.input = msg.content
-
-            await step.stream_token(f"\nSearch Max {kb_retrieve_document_count} documents.\n")
-
-            try:
-
-                prompt = f"""\n\nHuman: {query[0:900]}
-                Assistant:
-                """
-
-                response = bedrock_agent_runtime.retrieve(
-                    knowledgeBaseId = knowledge_base_id,
-                    retrievalQuery={
-                        'text': prompt,
-                    },
-                    retrievalConfiguration={
-                        'vectorSearchConfiguration': {
-                            'numberOfResults': kb_retrieve_document_count
-                        }
-                    }
-                )
-
-                reference_elements = []
-                for i, retrievalResult in enumerate(response['retrievalResults']):
-                    uri = retrievalResult['location']['s3Location']['uri']
-                    text = retrievalResult['content']['text']
-                    excerpt = text[0:75]
-                    score = retrievalResult['score']
-                    print(f"{i} RetrievalResult: {score} {uri} {excerpt}")
-                    #await msg.stream_token(f"\n{i} RetrievalResult: {score} {uri} {excerpt}\n")
-                    context_info += f"{text}\n" #context_info += f"<p>${text}</p>\n" #context_info += f"${text}\n"
-                    #await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)} text={excerpt}\n")
-                    await step.stream_token(f"\n[{i+1}] score={score} uri={uri} len={len(text)}\n")
-                    reference_elements.append(cl.Text(name=f"[{i+1}] {uri}", content=text, display="inline"))
-                
-                await step.stream_token(f"\n")
-                step.elements = reference_elements
-
-            except Exception as e:
-                logging.error(traceback.format_exc())
-                await step.stream_token(f"{e}")
-            finally:
-                await step.send()
-
         async with cl.Step(name="Model", type="llm", root=False) as step_llm:
             step_llm.input = msg.content
 
@@ -86,11 +60,7 @@ async def main_retrieve(message: cl.Message):
 
                 bedrock_model_strategy = app_bedrock.BedrockModelStrategyFactory.create(bedrock_model_id)
 
-                # Create Prompt create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
-
-                prompt = bedrock_model_strategy.create_prompt(application_options, context_info, query)
-
-                # End - Create Prompt 
+                prompt = await create_prompt(application_options, query)
 
                 system_message = inference_parameters.get("system_message")
                 elements.append(cl.Text(name=f"system", content=system_message.replace("\n\n", "").rstrip(), display="inline")) 
@@ -125,3 +95,4 @@ async def main_retrieve(message: cl.Message):
         await msg.stream_token(f"{e}")
     finally:
         await msg.send()
+
