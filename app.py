@@ -6,9 +6,10 @@ from chainlit.input_widget import Select, Slider, Switch
 from typing import Optional
 import logging
 import traceback
-import app_bedrock
 import app_retrieve_generate
 import app_retrieve
+import app_generate
+from typing import List
 
 AWS_REGION = os.environ["AWS_REGION"]
 AUTH_ADMIN_USR = os.environ["AUTH_ADMIN_USR"]
@@ -21,7 +22,8 @@ bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
 bedrock_agent = boto3.client('bedrock-agent', region_name=AWS_REGION)
 bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
 
-async def aws_bedrock_list_knowledge_bases() -> []:
+async def aws_bedrock_list_knowledge_bases() -> List[str]:
+
     response = bedrock_agent.list_knowledge_bases(maxResults=20) #response = bedrock_agent.list_knowledge_bases(maxResults = 5)
 
     kb_id_list = []
@@ -88,7 +90,7 @@ async def setup_settings():
             Select(
                 id = "Mode",
                 label = "KnowledgeBase Generation Mode",
-                values = ["RetrieveAndGenerate", "Retrieve"],
+                values = ["RetrieveAndGenerate", "Retrieve", "Generate"],
                 initial_index = 1,
             ),
             Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=True),
@@ -206,9 +208,11 @@ async def main(message: cl.Message):
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
     llm_model_arn = cl.user_session.get("llm_model_arn") 
     mode = cl.user_session.get("mode") 
-    #["RetrieveAndGenerate", "Retrieve"],
+
     if mode == "RetrieveAndGenerate":
         await app_retrieve_generate.main_retrieve_and_generate(message)
+    elif mode == "Generate":
+        await app_generate.main_retrieve(message)
     else:
         await app_retrieve.main_retrieve(message)
 
