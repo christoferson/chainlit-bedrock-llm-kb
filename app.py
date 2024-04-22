@@ -13,6 +13,8 @@ import app_retrieve
 AWS_REGION = os.environ["AWS_REGION"]
 AUTH_ADMIN_USR = os.environ["AUTH_ADMIN_USR"]
 AUTH_ADMIN_PWD = os.environ["AUTH_ADMIN_PWD"]
+AUTH_USER_USR = os.environ["AUTH_USER_USR"]
+AUTH_USER_PWD = os.environ["AUTH_USER_PWD"]
 
 bedrock = boto3.client("bedrock", region_name=AWS_REGION)
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
@@ -25,6 +27,8 @@ def auth_callback(username: str, password: str) -> Optional[cl.User]:
   # and compare the hashed password with the value stored in the database
   if (username, password) == (AUTH_ADMIN_USR, AUTH_ADMIN_PWD):
     return cl.User(identifier=AUTH_ADMIN_USR, metadata={"role": "admin", "provider": "credentials"})
+  elif (username, password) == (AUTH_USER_USR, AUTH_USER_PWD):
+    return cl.User(identifier=AUTH_USER_USR, metadata={"role": "user", "provider": "credentials"})
   else:
     return None
 
