@@ -155,6 +155,7 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
 
         option_terse = application_options.get("option_terse")
         option_strict = application_options.get("option_strict")
+        option_source_table_markdown_display = application_options.get("option_source_table_markdown_display")
 
         strict_instructions = ""
         if option_strict == True:
@@ -164,10 +165,15 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
         if option_terse == True:
             terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
 
+        source_table_markdown_display_instructions = ""
+        if option_source_table_markdown_display == True:
+            source_table_markdown_display_instructions = "- Present source data in tabular form as markdown."
+        
+
         prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
         <context>{context_info}</context>
         <instructions>
-        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {strict_instructions}
+        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {source_table_markdown_display_instructions} {strict_instructions}
         </instructions>
         <question>{query}</question>"""
 

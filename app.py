@@ -130,6 +130,7 @@ async def setup_settings():
             ),
             Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=False),
             Switch(id="Terse", label="Terse - Terse & Consise Answers", initial=False),
+            Switch(id="SourceTableMarkdown", label="Source Tables Markdown Display", initial=True),
         ]
     ).send()
 
@@ -164,7 +165,8 @@ async def setup_agent(settings):
 
     application_options = dict (
         option_terse = settings["Terse"],
-        option_strict = settings["Strict"]
+        option_strict = settings["Strict"],
+        option_source_table_markdown_display = settings["SourceTableMarkdown"]
     )
 
     cl.user_session.set("inference_parameters", inference_parameters)
