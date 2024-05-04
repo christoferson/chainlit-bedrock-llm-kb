@@ -76,9 +76,7 @@ async def main_retrieve_and_generate(message: cl.Message):
         if session_id != "" and session_id is not None:
             params["sessionId"] = session_id #session_id=84219eab-2060-4a8f-a481-3356d66b8586
 
-        response = bedrock_agent_runtime.retrieve_and_generate(
-            **params
-        )
+        response = bedrock_agent_runtime.retrieve_and_generate(**params)
 
         #response = bedrock_agent_runtime.retrieve_and_generate(
         #    #sessionId = session_id,
