@@ -48,19 +48,18 @@ async def main_retrieve_and_generate(message: cl.Message):
 
     try:
 
-        response = bedrock_agent_runtime.retrieve_and_generate(
-            #sessionId = session_id,
-            input = {
+        params = {
+            "input" : {
                 'text': prompt,
             },
-            retrieveAndGenerateConfiguration = {
+            "retrieveAndGenerateConfiguration" : {
                 'type': 'KNOWLEDGE_BASE',
                 'knowledgeBaseConfiguration': {
                     'knowledgeBaseId': knowledge_base_id,
                     'modelArn': llm_model_arn,
                     'retrievalConfiguration': {
                         'vectorSearchConfiguration': {
-                            'numberOfResults': kb_retrieve_document_count,  #Minimum value of 1. Maximum value of 100
+                            'numberOfResults': 3, #kb_retrieve_document_count,  #Minimum value of 1. Maximum value of 100
                             #'overrideSearchType': 'HYBRID'|'SEMANTIC'
                         }
                     },
@@ -71,8 +70,41 @@ async def main_retrieve_and_generate(message: cl.Message):
                     #    }
                     #}
                 }
-            }
+            },
+        }
+
+        if session_id != "" and session_id is not None:
+            params["sessionId"] = session_id #session_id=84219eab-2060-4a8f-a481-3356d66b8586
+
+        response = bedrock_agent_runtime.retrieve_and_generate(
+            **params
         )
+
+        #response = bedrock_agent_runtime.retrieve_and_generate(
+        #    #sessionId = session_id,
+        #    input = {
+        #        'text': prompt,
+        #    },
+        #    retrieveAndGenerateConfiguration = {
+        #        'type': 'KNOWLEDGE_BASE',
+        #        'knowledgeBaseConfiguration': {
+        #            'knowledgeBaseId': knowledge_base_id,
+        #            'modelArn': llm_model_arn,
+        #            'retrievalConfiguration': {
+        #                'vectorSearchConfiguration': {
+        #                    'numberOfResults': kb_retrieve_document_count,  #Minimum value of 1. Maximum value of 100
+        #                    #'overrideSearchType': 'HYBRID'|'SEMANTIC'
+        #                }
+        #            },
+        #            # Unknown parameter in retrieveAndGenerateConfiguration.knowledgeBaseConfiguration: "generationConfiguration", must be one of: knowledgeBaseId, modelArn, retrievalConfiguration
+        #            #'generationConfiguration': {
+        #            #    'promptTemplate': {
+        #            #        'textPromptTemplate': prompt_template
+        #            #    }
+        #            #}
+        #        }
+        #    }
+        #)
 
         text = response['output']['text']
         await msg.stream_token(text)
@@ -117,7 +149,7 @@ async def main_retrieve_and_generate(message: cl.Message):
 
         session_id = response['sessionId']
         await msg.stream_token(f"\nsession_id={session_id}")
-
+        cl.user_session.set("session_id", session_id)
 
     except Exception as e:
         logging.error(traceback.format_exc())

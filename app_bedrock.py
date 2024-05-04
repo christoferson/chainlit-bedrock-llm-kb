@@ -121,7 +121,6 @@ class AnthropicClaude3MsgBedrockModelStrategy(BedrockModelStrategy):
 
         request = {
             "anthropic_version": "bedrock-2023-05-31",
-            #"prompt": prompt,
             "temperature": inference_parameters.get("temperature"),
             "top_p": inference_parameters.get("top_p"), #0.5,
             "top_k": inference_parameters.get("top_k"), #300,
@@ -181,7 +180,6 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
 
         request = {
             "anthropic_version": "bedrock-2023-05-31",
-            #"prompt": prompt,
             "temperature": inference_parameters.get("temperature"),
             "top_p": inference_parameters.get("top_p"), #0.5,
             "top_k": inference_parameters.get("top_k"), #300,
@@ -200,31 +198,50 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
     async def process_response_stream(self, stream, msg : cl.Message):
 
         for event in stream:
-            chunk = json.loads(event["chunk"]["bytes"])
+            if event["chunk"]:
+                chunk = json.loads(event["chunk"]["bytes"])
 
-            if chunk['type'] == 'message_start':
-                #print(f"Input Tokens: {chunk['message']['usage']['input_tokens']}")
-                pass
+                if chunk['type'] == 'message_start':
+                    #print(f"Input Tokens: {chunk['message']['usage']['input_tokens']}")
+                    pass
 
-            elif chunk['type'] == 'message_delta':
-                #print(f"\nStop reason: {chunk['delta']['stop_reason']}")
-                #print(f"Stop sequence: {chunk['delta']['stop_sequence']}")
-                #print(f"Output tokens: {chunk['usage']['output_tokens']}")
-                pass
+                elif chunk['type'] == 'message_delta':
+                    #print(f"\nStop reason: {chunk['delta']['stop_reason']}")
+                    #print(f"Stop sequence: {chunk['delta']['stop_sequence']}")
+                    #print(f"Output tokens: {chunk['usage']['output_tokens']}")
+                    pass
 
-            elif chunk['type'] == 'content_block_delta':
-                if chunk['delta']['type'] == 'text_delta':
-                    text = chunk['delta']['text']
-                    await msg.stream_token(f"{text}")
+                elif chunk['type'] == 'content_block_delta':
+                    if chunk['delta']['type'] == 'text_delta':
+                        text = chunk['delta']['text']
+                        await msg.stream_token(f"{text}")
 
-            elif chunk['type'] == 'message_stop':
-                invocation_metrics = chunk['amazon-bedrock-invocationMetrics']
-                input_token_count = invocation_metrics["inputTokenCount"]
-                output_token_count = invocation_metrics["outputTokenCount"]
-                latency = invocation_metrics["invocationLatency"]
-                lag = invocation_metrics["firstByteLatency"]
-                stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
-                await msg.stream_token(f"\n\n{stats}")
+                elif chunk['type'] == 'message_stop':
+                    invocation_metrics = chunk['amazon-bedrock-invocationMetrics']
+                    input_token_count = invocation_metrics["inputTokenCount"]
+                    output_token_count = invocation_metrics["outputTokenCount"]
+                    latency = invocation_metrics["invocationLatency"]
+                    lag = invocation_metrics["firstByteLatency"]
+                    stats = f"token.in={input_token_count} token.out={output_token_count} latency={latency} lag={lag}"
+                    await msg.stream_token(f"\n\n{stats}")
+
+            elif event["internalServerException"]:
+                exception = event["internalServerException"]
+                await msg.stream_token(f"\n\n{exception}")
+            elif event["modelStreamErrorException"]:
+                exception = event["modelStreamErrorException"]
+                await msg.stream_token(f"\n\n{exception}")
+            elif event["modelTimeoutException"]:
+                exception = event["modelTimeoutException"]
+                await msg.stream_token(f"\n\n{exception}")
+            elif event["throttlingException"]:
+                exception = event["throttlingException"]
+                await msg.stream_token(f"\n\n{exception}")
+            elif event["validationException"]:
+                exception = event["validationException"]
+                await msg.stream_token(f"\n\n{exception}")
+            else:
+                await msg.stream_token(f"Unknown Stream Token: {event}")
 
 class CohereBedrockModelStrategy(BedrockModelStrategy):
 

@@ -5,6 +5,8 @@ import logging
 import traceback
 import app_bedrock
 
+from botocore.exceptions import ClientError
+
 AWS_REGION = os.environ["AWS_REGION"]
 
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
@@ -13,12 +15,12 @@ bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_RE
 async def main_retrieve(message: cl.Message):
 
     application_options = cl.user_session.get("application_options")
-    session_id = cl.user_session.get("session_id") 
+    #session_id = cl.user_session.get("session_id") 
     knowledge_base_id = cl.user_session.get("knowledge_base_id") 
-    llm_model_arn = cl.user_session.get("llm_model_arn") 
+    #llm_model_arn = cl.user_session.get("llm_model_arn") 
     bedrock_model_id = cl.user_session.get("bedrock_model_id")
     inference_parameters = cl.user_session.get("inference_parameters")
-    strict = cl.user_session.get("strict")
+    option_strict = application_options.get("option_strict")
     option_terse = application_options.get("option_terse")
     kb_retrieve_document_count = cl.user_session.get("kb_retrieve_document_count")
 
@@ -73,7 +75,7 @@ async def main_retrieve(message: cl.Message):
 
             except Exception as e:
                 logging.error(traceback.format_exc())
-                await step.stream_token(f"{e}")
+                await msg.stream_token(f"{e}")
             finally:
                 await step.send()
 
@@ -111,13 +113,17 @@ async def main_retrieve(message: cl.Message):
 
                 step_llm.elements = elements
 
+            except ClientError as err:
+                message = err.response["Error"]["Message"]
+                logging.error("A client error occurred: %s", message)
+                await msg.stream_token(f"{message}")
             except Exception as e:
                 logging.error(traceback.format_exc())
-                await step_llm.stream_token(f"{e}")
+                await msg.stream_token(f"{e}")
             finally:
                 await step_llm.send()
 
-        await msg.stream_token(f". strict={strict} terse={option_terse}\n")
+        await msg.stream_token(f". strict={option_strict} terse={option_terse}\n")
         await msg.send()
 
     except Exception as e:

@@ -1,6 +1,5 @@
 import os
 import boto3
-import uuid
 import chainlit as cl
 from chainlit.input_widget import Select, Slider, Switch
 from typing import Optional
@@ -93,13 +92,11 @@ async def setup_settings():
                 values = ["RetrieveAndGenerate", "Retrieve", "Generate"],
                 initial_index = 1,
             ),
-            Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=True),
-            Switch(id="Terse", label="Terse - Terse & Consise Answers", initial=True),
             Select(
                 id = "Model",
                 label = "Foundation Model",
                 values = model_ids,
-                initial_index = model_ids.index("anthropic.claude-v2"),
+                initial_index = model_ids.index("anthropic.claude-3-sonnet-20240229-v1:0"),
             ),
             Slider(
                 id = "Temperature",
@@ -122,7 +119,7 @@ async def setup_settings():
                 label = "Top K - High Probability vs Low Probability",
                 initial = 250,
                 min = 0,
-                max = 500,
+                max = 1500,
                 step = 5,
             ),
             Slider(
@@ -133,6 +130,8 @@ async def setup_settings():
                 max = 4096,
                 step = 256,
             ),
+            Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=False),
+            Switch(id="Terse", label="Terse - Terse & Consise Answers", initial=False),
         ]
     ).send()
 
@@ -190,9 +189,8 @@ def bedrock_list_models(bedrock):
 @cl.on_chat_start
 async def main():
 
-    session_id = str(uuid.uuid4())
-
-    cl.user_session.set("session_id", session_id)
+    #session_id = str(uuid.uuid4())
+    #cl.user_session.set("session_id", session_id)
     
     settings = await setup_settings()
 
