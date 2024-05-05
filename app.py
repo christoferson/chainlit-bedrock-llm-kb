@@ -168,12 +168,28 @@ def bedrock_list_models(bedrock):
     for item in response["modelSummaries"]:
         print(item['modelId'])
 
+@cl.action_callback("action_button")
+async def on_action(action: cl.Action):
+    headers = await cl.CopilotFunction(name="fetch_headers", args={"msg": "agent_id"}).acall()
+    print(f"A:{headers}")
+    if headers:
+        return "OIDC: " + str(headers)
+    else:
+       return "OIDC not found"
+
 @cl.on_chat_start
 async def main():
 
     #session_id = str(uuid.uuid4())
     #cl.user_session.set("session_id", session_id)
+    ###
     
+    actions = [
+        cl.Action(name="action_button", value="example_value", description="Click me!")
+    ]
+    await cl.Message(content="Fetch OIDC:", actions=actions).send()
+    ####
+
     settings = await setup_settings()
 
     await setup_agent(settings)
