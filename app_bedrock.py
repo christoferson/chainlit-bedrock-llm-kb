@@ -5,6 +5,27 @@ class BedrockModelStrategy():
 
     def create_prompt(self, application_options: dict, context_info: str, query: str) -> str:
 
+        prompt = ""
+        if "" == context_info:
+            prompt = self._create_prompt(application_options, query)
+        else:
+            prompt = self._create_prompt_with_context(application_options, context_info, query)
+
+        return prompt
+
+    def _create_prompt(self, application_options: dict, query: str) -> str:
+
+        prompt = f"""Please answer the following question to the best of your ability. If you are unsure or don't have enough information to provide a confident answer, simply say "I don't know" or "I'm not sure."
+
+        \n\nHuman: {query}
+
+        Assistant:
+        """
+
+        return prompt
+
+    def _create_prompt_with_context(self, application_options: dict, context_info: str, query: str) -> str:
+
         option_terse = application_options.get("option_terse")
         option_strict = application_options.get("option_strict")
 
@@ -85,7 +106,6 @@ class AnthropicBedrockModelStrategy(BedrockModelStrategy):
             #"stop_sequences": []
         }
         return request
-
 
     async def process_response_stream(self, stream, msg : cl.Message):
         if stream:

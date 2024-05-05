@@ -6,6 +6,7 @@ from typing import Optional
 import app_retrieve_generate
 import app_retrieve
 import app_generate
+import app_bedrock_lib
 from typing import List
 
 AWS_REGION = os.environ["AWS_REGION"]
@@ -18,25 +19,6 @@ bedrock = boto3.client("bedrock", region_name=AWS_REGION)
 bedrock_runtime = boto3.client('bedrock-runtime', region_name=AWS_REGION)
 bedrock_agent = boto3.client('bedrock-agent', region_name=AWS_REGION)
 bedrock_agent_runtime = boto3.client('bedrock-agent-runtime', region_name=AWS_REGION)
-
-async def aws_bedrock_list_knowledge_bases() -> List[str]:
-
-    response = bedrock_agent.list_knowledge_bases(maxResults=20) #response = bedrock_agent.list_knowledge_bases(maxResults = 5)
-
-    kb_id_list = []
-    for i, knowledgeBaseSummary in enumerate(response['knowledgeBaseSummaries']):
-        kb_id = knowledgeBaseSummary['knowledgeBaseId']
-        name = knowledgeBaseSummary['name']
-        description = knowledgeBaseSummary['description']
-        status = knowledgeBaseSummary['status']
-        updatedAt = knowledgeBaseSummary['updatedAt']
-        #print(f"{i} RetrievalResult: {kb_id} {name} {description} {status} {updatedAt}")
-        kb_id_list.append(f"{kb_id} {name}")
-    
-    if not kb_id_list:
-        kb_id_list = ["EMPTY EMPTY"]
-    
-    return kb_id_list
 
 @cl.password_auth_callback
 def auth_callback(username: str, password: str) -> Optional[cl.User]:
@@ -51,7 +33,7 @@ def auth_callback(username: str, password: str) -> Optional[cl.User]:
 
 async def setup_settings():
 
-    kb_id_list = await aws_bedrock_list_knowledge_bases()
+    kb_id_list = await app_bedrock_lib.list_knowledge_bases()
 
     model_ids = [
         "anthropic.claude-v2", #"anthropic.claude-v2:0:18k",
