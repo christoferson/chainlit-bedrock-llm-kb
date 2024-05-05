@@ -41,3 +41,9 @@ Before answering, please think about the question within <thinking></thinking> X
 - https://docs.anthropic.com/claude/docs/prompt-engineering
 
 - https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-claude.html
+
+
+
+## TODO
+Metadata
+Custom Prompt
