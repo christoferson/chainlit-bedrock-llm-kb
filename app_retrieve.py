@@ -22,6 +22,9 @@ async def main_retrieve(message: cl.Message):
     inference_parameters = cl.user_session.get("inference_parameters")
     option_strict = application_options.get("option_strict")
     option_terse = application_options.get("option_terse")
+    option_align_units_of_measure = application_options.get("option_align_units_of_measure")
+    option_state_conclusions_first = application_options.get("option_state_conclusions_first")
+    option_source_table_markdown_display = application_options.get("option_source_table_markdown_display")
     kb_retrieve_document_count = cl.user_session.get("kb_retrieve_document_count")
 
     query = message.content
@@ -123,7 +126,8 @@ async def main_retrieve(message: cl.Message):
             finally:
                 await step_llm.send()
 
-        await msg.stream_token(f". strict={option_strict} terse={option_terse}\n")
+
+        await msg.stream_token(f". strict={option_strict} terse={option_terse} align_units={option_align_units_of_measure} conclusions_first={option_state_conclusions_first} markdown={option_source_table_markdown_display}\n")
         await msg.send()
 
     except Exception as e:

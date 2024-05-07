@@ -175,6 +175,8 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
 
         option_terse = application_options.get("option_terse")
         option_strict = application_options.get("option_strict")
+        option_align_units_of_measure = application_options.get("option_align_units_of_measure")
+        option_state_conclusions_first = application_options.get("option_state_conclusions_first")
         option_source_table_markdown_display = application_options.get("option_source_table_markdown_display")
 
         strict_instructions = ""
@@ -185,6 +187,14 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
         if option_terse == True:
             terse_instructions = "Unless otherwise instructed, omit any preamble and provide terse and concise one liner answer."
 
+        align_units_of_measure_instruction = ""
+        if option_align_units_of_measure == True:
+            align_units_of_measure_instruction = "- If the unit of measure of the question does not match that of the source document, convert the input to the same unit of measure as the source first before deciding."
+
+        state_conclusions_first_instruction = ""
+        if option_state_conclusions_first == True:
+            state_conclusions_first_instruction = "- Always provide the conclusion or answer first then state the reason as a separate paragraph."
+
         source_table_markdown_display_instructions = ""
         if option_source_table_markdown_display == True:
             source_table_markdown_display_instructions = "- Present source data in tabular form as markdown."
@@ -193,7 +203,7 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
         prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
         <context>{context_info}</context>
         <instructions>
-        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {source_table_markdown_display_instructions} {strict_instructions}
+        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {align_units_of_measure_instruction} {state_conclusions_first_instruction} {source_table_markdown_display_instructions} {strict_instructions}
         </instructions>
         <question>{query}</question>"""
 

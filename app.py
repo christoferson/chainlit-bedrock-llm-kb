@@ -112,6 +112,8 @@ async def setup_settings():
             ),
             Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=False),
             Switch(id="Terse", label="Terse - Terse & Consise Answers", initial=False),
+            Switch(id="AlignUnitsOfMeasure", label="Align Units of Measure", initial=True),
+            Switch(id="StateConclusionFirst", label="Always State Conclusions First", initial=True),
             Switch(id="SourceTableMarkdown", label="Source Tables Markdown Display", initial=True),
         ]
     ).send()
@@ -148,6 +150,8 @@ async def setup_agent(settings):
     application_options = dict (
         option_terse = settings["Terse"],
         option_strict = settings["Strict"],
+        option_align_units_of_measure = settings["AlignUnitsOfMeasure"],
+        option_state_conclusions_first = settings["StateConclusionFirst"],
         option_source_table_markdown_display = settings["SourceTableMarkdown"]
     )
 
