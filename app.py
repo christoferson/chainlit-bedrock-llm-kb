@@ -105,7 +105,7 @@ async def setup_settings():
             Slider(
                 id="MaxTokenCount",
                 label="Max Token Size",
-                initial = 2560,
+                initial = 3072,
                 min = 256,
                 max = 4096,
                 step = 256,
@@ -113,7 +113,8 @@ async def setup_settings():
             Switch(id="Strict", label="Retrieve - Limit Answers to KnowledgeBase", initial=False),
             Switch(id="Terse", label="Terse - Terse & Consise Answers", initial=False),
             Switch(id="AlignUnitsOfMeasure", label="Align Units of Measure", initial=True),
-            Switch(id="StateConclusionFirst", label="Always State Conclusions First", initial=True),
+            Switch(id="AlignGeographicDivisions", label="Align Geographic Divisions", initial=True),
+            Switch(id="StateConclusionFirst", label="Always State Conclusions First", initial=False),
             Switch(id="SourceTableMarkdown", label="Source Tables Markdown Display", initial=True),
         ]
     ).send()
@@ -151,6 +152,7 @@ async def setup_agent(settings):
         option_terse = settings["Terse"],
         option_strict = settings["Strict"],
         option_align_units_of_measure = settings["AlignUnitsOfMeasure"],
+        option_align_geographic_divisions = settings["AlignGeographicDivisions"],
         option_state_conclusions_first = settings["StateConclusionFirst"],
         option_source_table_markdown_display = settings["SourceTableMarkdown"]
     )

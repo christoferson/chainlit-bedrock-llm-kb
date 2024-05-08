@@ -176,6 +176,7 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
         option_terse = application_options.get("option_terse")
         option_strict = application_options.get("option_strict")
         option_align_units_of_measure = application_options.get("option_align_units_of_measure")
+        option_align_geographic_divisions = application_options.get("option_align_geographic_divisions")
         option_state_conclusions_first = application_options.get("option_state_conclusions_first")
         option_source_table_markdown_display = application_options.get("option_source_table_markdown_display")
 
@@ -199,11 +200,15 @@ class AnthropicClaude3MsgBedrockModelAsyncStrategy(BedrockModelStrategy):
         if option_source_table_markdown_display == True:
             source_table_markdown_display_instructions = "- Present source data in tabular form as markdown."
         
+        align_geographic_divisions_instructions = ""
+        if option_align_geographic_divisions == True:
+            align_geographic_divisions_instructions = "- When encountering geographic locations in user questions, first establish the administrative division specified in the source document. If the input location differs from this specified division (e.g., the source document uses prefectures or provinces while the user mentions cities), determine the corresponding administrative division (e.g., prefecture or province) where the mentioned city is situated. Use this determined administrative division to answer the question in accordance with the criteria outlined in the source document."
+
 
         prompt = f"""Please answer the question with the provided context while following instructions provided. {terse_instructions}
         <context>{context_info}</context>
         <instructions>
-        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {align_units_of_measure_instruction} {state_conclusions_first_instruction} {source_table_markdown_display_instructions} {strict_instructions}
+        - Do not reformat, or convert any numeric values. Inserting commas is allowed for readability. {align_units_of_measure_instruction} {align_geographic_divisions_instructions} {state_conclusions_first_instruction} {source_table_markdown_display_instructions} {strict_instructions}
         </instructions>
         <question>{query}</question>"""
 
