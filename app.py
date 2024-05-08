@@ -61,9 +61,9 @@ async def setup_settings():
             Slider(
                 id = "RetrieveDocumentCount",
                 label = "KnowledgeBase DocumentCount",
-                initial = 3,
+                initial = 4,
                 min = 1,
-                max = 8,
+                max = 12,
                 step = 1,
             ),
             Select(
