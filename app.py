@@ -9,6 +9,7 @@ import app_generate
 import app_bedrock_lib
 from typing import List
 
+
 AWS_REGION = os.environ["AWS_REGION"]
 AUTH_ADMIN_USR = os.environ["AUTH_ADMIN_USR"]
 AUTH_ADMIN_PWD = os.environ["AUTH_ADMIN_PWD"]
@@ -174,6 +175,7 @@ def bedrock_list_models(bedrock):
     for item in response["modelSummaries"]:
         print(item['modelId'])
 
+    
 @cl.on_chat_start
 async def main():
 
